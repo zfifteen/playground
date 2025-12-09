@@ -51,24 +51,30 @@ class SL2ZEnumerator:
         trace = np.trace(matrix)
         return abs(trace) > 2
     
-    def compute_invariants(self, matrix: np.ndarray) -> Tuple[int, float, float]:
+    def compute_invariants(self, matrix: np.ndarray) -> Tuple[int, int]:
         """
-        Compute simple invariants for de-duplication.
+        Compute conjugacy invariants for de-duplication.
+        
+        For SL(2,Z), matrices are conjugate if they have the same:
+        - trace (invariant under conjugation)
+        - discriminant = trace² - 4 (determines eigenvalue structure)
+        
+        This is more mathematically sound than using Frobenius norm.
         
         Returns:
         --------
         trace : int
             Matrix trace
-        lambda_max : float
-            Maximum eigenvalue magnitude (rounded to avoid float errors)
-        matrix_norm : float
-            Frobenius norm (for additional differentiation)
+        discriminant : int
+            trace² - 4 (determines conjugacy class)
+        
+        Note: This is still an approximation. Full conjugacy classification
+        in SL(2,Z) requires orbit representatives, but this is adequate for
+        generating diverse test matrices.
         """
         trace = int(np.trace(matrix))
-        evals = eigvals(matrix)
-        lambda_max = round(max(abs(evals)), 10)
-        matrix_norm = round(np.linalg.norm(matrix, 'fro'), 10)
-        return trace, lambda_max, matrix_norm
+        discriminant = trace * trace - 4
+        return trace, discriminant
     
     def enumerate_by_trace(self, 
                           target_trace: int,
@@ -99,7 +105,7 @@ class SL2ZEnumerator:
             return []  # Not hyperbolic
         
         matrices = []
-        seen_invariants: Set[Tuple[int, float, float]] = set()
+        seen_invariants: Set[Tuple[int, int]] = set()
         
         # Iterate over possible values of a, b, c
         # Then compute d = trace - a and check det = ad - bc = 1

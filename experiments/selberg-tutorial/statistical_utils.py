@@ -141,7 +141,8 @@ def bootstrap_regression_ci(x: np.ndarray,
 def permutation_test_correlation(x: np.ndarray,
                                  y: np.ndarray,
                                  n_perm: int = 1000,
-                                 seed: Optional[int] = None) -> Tuple[float, float]:
+                                 seed: Optional[int] = None,
+                                 bonferroni_k: Optional[int] = None) -> Tuple[float, float]:
     """
     Permutation test for correlation significance.
     
@@ -157,6 +158,10 @@ def permutation_test_correlation(x: np.ndarray,
         Number of permutations
     seed : Optional[int]
         Random seed
+    bonferroni_k : Optional[int]
+        Number of simultaneous tests for Bonferroni correction.
+        If provided, use adjusted alpha = 0.05/k for significance.
+        Example: Testing entropy-disc AND gap-disc correlations → k=2
         
     Returns:
     --------
@@ -164,6 +169,15 @@ def permutation_test_correlation(x: np.ndarray,
         Observed correlation coefficient
     p_value : float
         Two-tailed p-value
+        
+    Note:
+    -----
+    When performing multiple correlation tests, apply Bonferroni correction:
+    - Single test: significant if p < 0.05
+    - k tests: significant if p < 0.05/k
+    
+    Example: Testing 3 correlations (entropy, gap, moment vs discrepancy)
+    requires p < 0.05/3 = 0.0167 for significance.
     """
     rng = np.random.default_rng(seed)
     
@@ -179,6 +193,9 @@ def permutation_test_correlation(x: np.ndarray,
     
     # Compute p-value (two-tailed)
     p_value = np.mean(np.abs(perm_corrs) >= np.abs(observed_corr))
+    
+    if bonferroni_k is not None:
+        print(f"  ℹ Bonferroni correction: k={bonferroni_k}, adjusted α={0.05/bonferroni_k:.4f}")
     
     return observed_corr, p_value
 

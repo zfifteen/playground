@@ -70,9 +70,14 @@ def test_discrepancy_ordering():
     halton_mean, halton_lower, halton_upper = bootstrap_ci(np.array(halton_discs), seed=42)
     random_mean, random_lower, random_upper = bootstrap_ci(np.array(random_discs), seed=42)
     
-    print(f"  Sobol:  {sobol_mean:.6f} [{sobol_lower:.6f}, {sobol_upper:.6f}]")
-    print(f"  Halton: {halton_mean:.6f} [{halton_lower:.6f}, {halton_upper:.6f}]")
-    print(f"  Random: {random_mean:.6f} [{random_lower:.6f}, {random_upper:.6f}]")
+    print(f"  Sobol:  {sobol_mean:.8e} [{sobol_lower:.8e}, {sobol_upper:.8e}]")
+    print(f"  Halton: {halton_mean:.8e} [{halton_lower:.8e}, {halton_upper:.8e}]")
+    print(f"  Random: {random_mean:.8e} [{random_lower:.8e}, {random_upper:.8e}]")
+    
+    # Add assertion that discrepancies are non-zero (critical sanity check)
+    assert sobol_mean > 0, "Sobol discrepancy cannot be zero"
+    assert halton_mean > 0, "Halton discrepancy cannot be zero"
+    assert random_mean > 0, "Random discrepancy cannot be zero"
     
     # Statistical assertion: mean ordering should hold
     # (not strict due to randomness and small samples)
