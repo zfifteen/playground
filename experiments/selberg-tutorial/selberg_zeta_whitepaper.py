@@ -75,7 +75,9 @@ class AnosovTorus:
     """
     def __init__(self, matrix):
         self.M = np.array(matrix, dtype=float)
-        assert abs(np.linalg.det(self.M) - 1.0) < 1e-10, "Matrix must be unimodular"
+        det = np.linalg.det(self.M)
+        if abs(det - 1.0) >= 1e-10:
+            raise ValueError(f"Matrix must be unimodular (det=1), got det={det:.10f}")
         
         self.eigenvalues = eigvals(self.M)
         self.lambda_max = max(abs(self.eigenvalues))

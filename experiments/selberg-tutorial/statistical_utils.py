@@ -28,7 +28,8 @@ def bootstrap_ci(values: np.ndarray,
     values : np.ndarray
         Data values to bootstrap
     n_boot : int
-        Number of bootstrap samples
+        Number of bootstrap samples (default: 1000 for production, 
+        consider 100-200 for testing/development)
     alpha : float
         Significance level (e.g., 0.05 for 95% CI)
     statistic : Callable
@@ -44,6 +45,11 @@ def bootstrap_ci(values: np.ndarray,
         Lower bound of confidence interval
     ci_upper : float
         Upper bound of confidence interval
+    
+    Note:
+    -----
+    For routine testing, n_boot=100-200 is often sufficient.
+    For publication-quality results, use n_boot=1000 or higher.
     """
     rng = np.random.default_rng(seed)
     n = len(values)

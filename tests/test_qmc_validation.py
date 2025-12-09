@@ -20,7 +20,9 @@ import sys
 import os
 import numpy as np
 
-# Add parent directory to path
+# Add parent directory to path for testing
+# Note: This is intentionally simple for standalone test execution.
+# For package installation, use proper setuptools entry points.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'experiments', 'selberg-tutorial'))
 
 from qmc_baselines import QMCBaselineGenerator, DiscrepancyMetrics
