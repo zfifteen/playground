@@ -1,21 +1,10 @@
 #!/usr/bin/env python3
 """
-SELBERG ZETA FUNCTIONS: A VISUAL WHITE PAPER (Updated with Z Framework Guidelines)
-====================================================================================
+SELBERG ZETA FUNCTIONS: A VISUAL WHITE PAPER
+==============================================
 
 This script generates visualizations illustrating the key phenomena of Selberg zeta
-functions and their discrete dynamical systems analogues (Ruelle zeta functions),
-with rigorous statistical validation following Z Framework Guidelines.
-
-UPDATES (December 2025):
------------------------
-- Replaced Monte Carlo star discrepancy with scipy.stats.qmc discrepancy ('CD' and 'WD')
-- Added baseline comparisons (Sobol, Halton, Random) across N=[1000, 5000, 10000, 50000]
-- Expanded matrix test set from 4 to ~50 hyperbolic SL(2,Z) matrices
-- Added bootstrap 95% confidence intervals for all metrics
-- Implemented permutation tests for correlations with p-values
-- Replaced synthetic surface plots with measured data and hypothesis labels
-- All figures and tables saved with provenance timestamps
+functions and their discrete dynamical systems analogues (Ruelle zeta functions).
 
 Mathematical Background:
 -----------------------
@@ -32,13 +21,12 @@ Key Concepts Visualized:
 - Periodic orbit proliferation with entropy
 - Zeta coefficient growth and moments
 - Proximal vs non-proximal dynamics
-- QMC sampling quality with statistical validation
+- QMC sampling quality prediction
 - Spectral gap effects on mixing
 - Phase transitions in sampling efficiency
 
 Author: Big D (zfifteen)
 Date: December 2025
-Version: 2.0 (Z Framework Compliant)
 """
 
 import numpy as np
@@ -47,27 +35,12 @@ from matplotlib import cm
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.linalg import eigvals
 from scipy.spatial.distance import cdist
-from scipy.stats import qmc
 import warnings
-import os
-import pandas as pd
-from datetime import datetime
 warnings.filterwarnings('ignore')
-
-# Import local modules
-from qmc_baselines import QMCBaselineGenerator, DiscrepancyMetrics
-from sl2z_enum import SL2ZEnumerator
-from statistical_utils import bootstrap_ci, bootstrap_regression_ci, permutation_test_correlation
 
 # Set style for publication-quality plots
 plt.style.use('seaborn-v0_8-darkgrid')
 GOLDEN_RATIO = (1 + np.sqrt(5)) / 2
-
-# Output directories
-FIGURES_DIR = 'figures'
-TABLES_DIR = 'tables'
-os.makedirs(FIGURES_DIR, exist_ok=True)
-os.makedirs(TABLES_DIR, exist_ok=True)
 
 class AnosovTorus:
     """
@@ -118,199 +91,25 @@ class AnosovTorus:
         
         return c, N_vals
 
-def compute_discrepancy(points, method='CD'):
+def star_discrepancy_estimate(points, n_boxes=1000):
     """
-    Compute discrepancy using scipy.stats.qmc (REPLACES Monte Carlo estimate).
-    
-    Parameters:
-    -----------
-    points : np.ndarray
-        Points in [0,1)^d
-    method : str
-        'CD' (Centered Discrepancy) or 'WD' (Wrap-around Discrepancy)
-        
-    Returns:
-    --------
-    discrepancy : float
-        Standardized discrepancy value
+    Estimate star discrepancy D* using random box sampling.
+    D* = sup_B |#(points in B)/N - vol(B)|
     """
-    return qmc.discrepancy(points, method=method)
-
-
-def comprehensive_matrix_analysis(matrices, n_values=[1000, 5000, 10000, 50000], 
-                                  n_seeds=5, seed_base=42):
-    """
-    Perform comprehensive analysis across expanded matrix set and multiple N values.
+    N = len(points)
+    max_disc = 0.0
     
-    This is the core analysis function implementing Z Framework Guidelines.
-    
-    Parameters:
-    -----------
-    matrices : list of np.ndarray
-        List of SL(2,Z) matrices to analyze
-    n_values : list of int
-        Sample sizes to test
-    n_seeds : int
-        Number of random seeds for bootstrap
-    seed_base : int
-        Base random seed
+    for _ in range(n_boxes):
+        # Random axis-aligned box [0, u] × [0, v]
+        u, v = np.random.uniform(0, 1, 2)
+        box_vol = u * v
         
-    Returns:
-    --------
-    results : dict
-        Comprehensive results including discrepancies, CIs, correlations
-    """
-    print(f"Analyzing {len(matrices)} matrices across N={n_values}")
-    print(f"Using {n_seeds} seeds for bootstrap confidence intervals")
-    print()
+        # Count points in box
+        in_box = np.sum((points[:, 0] <= u) & (points[:, 1] <= v))
+        disc = abs(in_box / N - box_vol)
+        max_disc = max(max_disc, disc)
     
-    results = {
-        'matrices': matrices,
-        'n_values': n_values,
-        'anosov_data': [],
-        'baseline_data': {},
-        'matrix_properties': [],
-    }
-    
-    # Initialize baseline data storage
-    for method in ['sobol', 'halton', 'random']:
-        results['baseline_data'][method] = {n: {'cd': [], 'wd': []} for n in n_values}
-    
-    # Analyze each matrix
-    for idx, M in enumerate(matrices):
-        print(f"Matrix {idx+1}/{len(matrices)}: trace={int(np.trace(M))}", end=" ")
-        
-        try:
-            system = AnosovTorus(M)
-            
-            # Store matrix properties
-            coeffs, N_vals = system.zeta_coefficients(max_n=12, max_k=25)
-            properties = {
-                'matrix': M,
-                'trace': int(np.trace(M)),
-                'entropy': system.entropy,
-                'spectral_gap': system.spectral_gap,
-                'zeta_moment': np.sum(coeffs**2),
-                'lambda_max': system.lambda_max,
-            }
-            results['matrix_properties'].append(properties)
-            
-            # Analyze for each N value
-            matrix_results = {'properties': properties, 'by_n': {}}
-            
-            for n in n_values:
-                n_results = {'cd': [], 'wd': []}
-                
-                # Multiple seeds for bootstrap
-                for seed_offset in range(n_seeds):
-                    seed = seed_base + seed_offset
-                    
-                    # Generate Anosov orbit
-                    rng = np.random.default_rng(seed)
-                    x0 = rng.uniform(0, 1, 2)
-                    orbit = system.generate_orbit(x0, n)
-                    points = orbit[1:]  # Skip initial point
-                    
-                    # Compute discrepancies
-                    cd = compute_discrepancy(points, method='CD')
-                    wd = compute_discrepancy(points, method='WD')
-                    n_results['cd'].append(cd)
-                    n_results['wd'].append(wd)
-                
-                matrix_results['by_n'][n] = n_results
-            
-            results['anosov_data'].append(matrix_results)
-            print(f"✓ h={system.entropy:.3f}")
-            
-        except Exception as e:
-            print(f"✗ Error: {e}")
-            continue
-    
-    # Generate baseline data for each N
-    print()
-    print("Generating baseline sequences...")
-    for n in n_values:
-        print(f"  N={n}...", end=" ")
-        
-        for seed_offset in range(n_seeds):
-            seed = seed_base + seed_offset
-            generator = QMCBaselineGenerator(dimension=2, seed=seed)
-            
-            for method in ['sobol', 'halton', 'random']:
-                if method == 'sobol':
-                    points = generator.generate_sobol(n, scramble=True)
-                elif method == 'halton':
-                    points = generator.generate_halton(n, scramble=True)
-                else:
-                    points = generator.generate_random(n)
-                
-                cd = compute_discrepancy(points, method='CD')
-                wd = compute_discrepancy(points, method='WD')
-                results['baseline_data'][method][n]['cd'].append(cd)
-                results['baseline_data'][method][n]['wd'].append(wd)
-        
-        print("✓")
-    
-    print()
-    print("Analysis complete!")
-    return results
-
-
-def save_comprehensive_tables(results, timestamp):
-    """
-    Save comprehensive result tables with provenance.
-    """
-    print("Saving result tables...")
-    
-    # Table 1: Matrix properties
-    matrix_data = []
-    for props in results['matrix_properties']:
-        matrix_data.append({
-            'trace': props['trace'],
-            'entropy': props['entropy'],
-            'spectral_gap': props['spectral_gap'],
-            'lambda_max': props['lambda_max'],
-            'zeta_moment': props['zeta_moment'],
-        })
-    
-    df_matrices = pd.DataFrame(matrix_data)
-    filename = os.path.join(TABLES_DIR, f'matrix_properties_{timestamp}.csv')
-    df_matrices.to_csv(filename, index=False)
-    print(f"  Saved: {filename}")
-    
-    # Table 2: Discrepancy summary with CIs
-    summary_data = []
-    for n in results['n_values']:
-        row = {'N': n}
-        
-        # Baselines
-        for method in ['sobol', 'halton', 'random']:
-            cd_vals = results['baseline_data'][method][n]['cd']
-            cd_mean, cd_lower, cd_upper = bootstrap_ci(np.array(cd_vals), n_boot=1000, seed=42)
-            row[f'{method}_cd'] = cd_mean
-            row[f'{method}_cd_ci'] = f"[{cd_lower:.6f}, {cd_upper:.6f}]"
-        
-        # Anosov (average across all matrices)
-        anosov_cd_vals = []
-        for matrix_result in results['anosov_data']:
-            if n in matrix_result['by_n']:
-                anosov_cd_vals.extend(matrix_result['by_n'][n]['cd'])
-        
-        if anosov_cd_vals:
-            cd_mean, cd_lower, cd_upper = bootstrap_ci(np.array(anosov_cd_vals), n_boot=1000, seed=42)
-            row['anosov_cd_mean'] = cd_mean
-            row['anosov_cd_ci'] = f"[{cd_lower:.6f}, {cd_upper:.6f}]"
-        
-        summary_data.append(row)
-    
-    df_summary = pd.DataFrame(summary_data)
-    filename = os.path.join(TABLES_DIR, f'discrepancy_summary_{timestamp}.csv')
-    df_summary.to_csv(filename, index=False)
-    print(f"  Saved: {filename}")
-    
-    print("Tables saved successfully!")
-    return df_matrices, df_summary
-
+    return max_disc
 
 def plot_periodic_orbit_growth():
     """
@@ -481,171 +280,6 @@ def plot_orbit_visualization():
     
     plt.tight_layout()
     return fig
-
-def plot_qmc_comparison_new(analysis_results, timestamp):
-    """
-    Figure 4: NEW QMC comparison with baselines, N-sweeps, and statistical CIs.
-    
-    This replaces the old synthetic approach with measured data following
-    Z Framework Guidelines.
-    """
-    fig = plt.figure(figsize=(16, 12))
-    gs = fig.add_gridspec(3, 2, hspace=0.3, wspace=0.3)
-    
-    ax1 = fig.add_subplot(gs[0, :])  # Discrepancy vs N (top, full width)
-    ax2 = fig.add_subplot(gs[1, 0])  # Entropy vs discrepancy scatter
-    ax3 = fig.add_subplot(gs[1, 1])  # Spectral gap vs discrepancy
-    ax4 = fig.add_subplot(gs[2, 0])  # Sample distribution (Sobol)
-    ax5 = fig.add_subplot(gs[2, 1])  # Sample distribution (Best Anosov)
-    
-    n_values = analysis_results['n_values']
-    
-    # Plot 1: Discrepancy vs N curves with CIs
-    colors = {'sobol': 'blue', 'halton': 'green', 'random': 'gray', 'anosov': 'red'}
-    
-    for method in ['sobol', 'halton', 'random']:
-        means = []
-        lowers = []
-        uppers = []
-        
-        for n in n_values:
-            cd_vals = np.array(analysis_results['baseline_data'][method][n]['cd'])
-            mean, lower, upper = bootstrap_ci(cd_vals, n_boot=1000, seed=42)
-            means.append(mean)
-            lowers.append(lower)
-            uppers.append(upper)
-        
-        ax1.plot(n_values, means, 'o-', color=colors[method], label=method.capitalize(),
-                linewidth=2, markersize=6)
-        ax1.fill_between(n_values, lowers, uppers, color=colors[method], alpha=0.2)
-    
-    # Anosov average
-    anosov_means = []
-    anosov_lowers = []
-    anosov_uppers = []
-    
-    for n in n_values:
-        all_cd = []
-        for matrix_result in analysis_results['anosov_data']:
-            if n in matrix_result['by_n']:
-                all_cd.extend(matrix_result['by_n'][n]['cd'])
-        
-        if all_cd:
-            mean, lower, upper = bootstrap_ci(np.array(all_cd), n_boot=1000, seed=42)
-            anosov_means.append(mean)
-            anosov_lowers.append(lower)
-            anosov_uppers.append(upper)
-    
-    ax1.plot(n_values, anosov_means, 'o-', color=colors['anosov'], label='Anosov (avg)',
-            linewidth=2, markersize=6)
-    ax1.fill_between(n_values, anosov_lowers, anosov_uppers, color=colors['anosov'], alpha=0.2)
-    
-    ax1.set_xlabel('Sample Size N', fontsize=12)
-    ax1.set_ylabel('Centered Discrepancy (CD)', fontsize=12)
-    ax1.set_title('Discrepancy vs Sample Size (with 95% Bootstrap CIs)', fontsize=13, fontweight='bold')
-    ax1.legend(fontsize=10)
-    ax1.set_xscale('log')
-    ax1.set_yscale('log')
-    ax1.grid(True, alpha=0.3, which='both')
-    
-    # Plot 2 & 3: Scatter plots with regression
-    entropies = [p['entropy'] for p in analysis_results['matrix_properties']]
-    spectral_gaps = [p['spectral_gap'] for p in analysis_results['matrix_properties']]
-    
-    # Get mean discrepancies at N=10000
-    mean_discrepancies = []
-    for matrix_result in analysis_results['anosov_data']:
-        if 10000 in matrix_result['by_n']:
-            cd_vals = matrix_result['by_n'][10000]['cd']
-            mean_discrepancies.append(np.mean(cd_vals))
-    
-    # Entropy vs Discrepancy with regression
-    if len(entropies) == len(mean_discrepancies):
-        reg_results = bootstrap_regression_ci(np.array(entropies), np.array(mean_discrepancies),
-                                             n_boot=1000, seed=42)
-        
-        ax2.scatter(entropies, mean_discrepancies, s=80, alpha=0.6, edgecolors='black')
-        
-        # Regression line with CI band
-        x_fit = np.linspace(min(entropies), max(entropies), 100)
-        y_fit = reg_results['slope'][0] * x_fit + reg_results['intercept'][0]
-        ax2.plot(x_fit, y_fit, 'r--', linewidth=2, alpha=0.7)
-        
-        r_sq = reg_results['r_squared'][0]
-        r_sq_ci = f"[{reg_results['r_squared'][1]:.3f}, {reg_results['r_squared'][2]:.3f}]"
-        
-        ax2.text(0.05, 0.95, f"R² = {r_sq:.3f}\nCI: {r_sq_ci}", 
-                transform=ax2.transAxes, fontsize=9,
-                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
-                verticalalignment='top')
-        
-        # Permutation test
-        corr, p_val = permutation_test_correlation(np.array(entropies), 
-                                                   np.array(mean_discrepancies), 
-                                                   n_perm=1000, seed=42)
-        ax2.text(0.05, 0.75, f"p-value: {p_val:.4f}", 
-                transform=ax2.transAxes, fontsize=9,
-                bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.8),
-                verticalalignment='top')
-    
-    ax2.set_xlabel('Entropy h', fontsize=11)
-    ax2.set_ylabel('Mean CD (N=10000)', fontsize=11)
-    ax2.set_title('Entropy vs Discrepancy\n(with regression & CI)', fontsize=12, fontweight='bold')
-    ax2.grid(True, alpha=0.3)
-    
-    # Spectral gap vs Discrepancy
-    if len(spectral_gaps) == len(mean_discrepancies):
-        ax3.scatter(spectral_gaps, mean_discrepancies, s=80, alpha=0.6, edgecolors='black')
-        
-        reg_results_gap = bootstrap_regression_ci(np.array(spectral_gaps), 
-                                                  np.array(mean_discrepancies),
-                                                  n_boot=1000, seed=42)
-        
-        x_fit = np.linspace(min(spectral_gaps), max(spectral_gaps), 100)
-        y_fit = reg_results_gap['slope'][0] * x_fit + reg_results_gap['intercept'][0]
-        ax3.plot(x_fit, y_fit, 'r--', linewidth=2, alpha=0.7)
-        
-        r_sq = reg_results_gap['r_squared'][0]
-        ax3.text(0.05, 0.95, f"R² = {r_sq:.3f}", 
-                transform=ax3.transAxes, fontsize=9,
-                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
-                verticalalignment='top')
-    
-    ax3.set_xlabel('Spectral Gap Δ', fontsize=11)
-    ax3.set_ylabel('Mean CD (N=10000)', fontsize=11)
-    ax3.set_title('Spectral Gap vs Discrepancy\n(with regression)', fontsize=12, fontweight='bold')
-    ax3.grid(True, alpha=0.3)
-    
-    # Plot 4 & 5: Side-by-side 2D density plots
-    # Generate sample distributions for comparison
-    n_sample = 1000
-    generator = QMCBaselineGenerator(dimension=2, seed=42)
-    sobol_points = generator.generate_sobol(n_sample, scramble=True)
-    
-    # Best Anosov matrix (lowest discrepancy)
-    best_idx = np.argmin(mean_discrepancies) if mean_discrepancies else 0
-    best_matrix = analysis_results['matrix_properties'][best_idx]['matrix']
-    best_system = AnosovTorus(best_matrix)
-    x0 = np.array([0.1, 0.2])
-    best_orbit = best_system.generate_orbit(x0, n_sample)
-    anosov_points = best_orbit[1:]
-    
-    # Plot density
-    for ax, points, title in [(ax4, sobol_points, 'Sobol'), (ax5, anosov_points, 'Best Anosov')]:
-        H, xedges, yedges = np.histogram2d(points[:, 0], points[:, 1], bins=30, range=[[0, 1], [0, 1]])
-        extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
-        im = ax.imshow(H.T, origin='lower', extent=extent, cmap='viridis', aspect='auto')
-        ax.set_xlabel('x', fontsize=10)
-        ax.set_ylabel('y', fontsize=10)
-        ax.set_title(f'{title} Density (N={n_sample})', fontsize=11, fontweight='bold')
-        plt.colorbar(im, ax=ax, label='Count')
-    
-    filename = os.path.join(FIGURES_DIR, f'fig_qmc_comparison_comprehensive_{timestamp}.png')
-    fig.savefig(filename, dpi=300, bbox_inches='tight')
-    plt.close(fig)
-    print(f"  Saved: {filename}")
-    return fig
-
 
 def plot_qmc_comparison():
     """
@@ -966,127 +600,54 @@ def plot_theoretical_connections():
     return fig
 
 def generate_all_plots():
-    """
-    Generate all white paper visualizations with comprehensive statistical analysis.
+    """Generate all white paper visualizations and save to outputs"""
+    import os
+    output_dir = '/mnt/user-data/outputs'
+    os.makedirs(output_dir, exist_ok=True)
     
-    This is the main entry point following Z Framework Guidelines.
-    """
-    print("=" * 80)
-    print("SELBERG ZETA FUNCTIONS: VISUAL WHITE PAPER v2.0")
-    print("Z Framework Compliant with Statistical Rigor")
-    print("=" * 80)
+    print("=" * 70)
+    print("SELBERG ZETA FUNCTIONS: VISUAL WHITE PAPER")
+    print("=" * 70)
     print()
     
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
-    # Step 1: Generate expanded matrix test set
-    print("Step 1: Generating expanded SL(2,Z) matrix test set...")
-    print("-" * 80)
-    enumerator = SL2ZEnumerator(max_entry=15, min_trace_abs=3)
-    matrices = enumerator.get_standard_test_set(n_matrices=50, diversity='mixed')
-    print(f"Generated {len(matrices)} hyperbolic SL(2,Z) matrices")
-    print()
-    
-    # Step 2: Comprehensive analysis
-    print("Step 2: Running comprehensive QMC analysis...")
-    print("-" * 80)
-    # Use smaller N values for faster execution, can be increased for production
-    n_values = [1000, 5000, 10000, 50000]
-    n_seeds = 5
-    
-    analysis_results = comprehensive_matrix_analysis(
-        matrices=matrices[:10],  # Start with subset for testing
-        n_values=n_values,
-        n_seeds=n_seeds,
-        seed_base=42
-    )
-    print()
-    
-    # Step 3: Save comprehensive tables
-    print("Step 3: Saving result tables...")
-    print("-" * 80)
-    df_matrices, df_summary = save_comprehensive_tables(analysis_results, timestamp)
-    print()
-    
-    # Step 4: Generate original figures (updated where needed)
-    print("Step 4: Generating original figures...")
-    print("-" * 80)
-    
-    original_figures = [
+    figures = [
         ("Figure 1: Periodic Orbit Growth", plot_periodic_orbit_growth),
         ("Figure 2: Zeta Coefficient Structure", plot_zeta_coefficients),
         ("Figure 3: Orbit Visualization", plot_orbit_visualization),
-        # Skip old Fig 4, will use new one
+        ("Figure 4: QMC Comparison", plot_qmc_comparison),
         ("Figure 5: Spectral Gap Effect", plot_spectral_gap_effect),
         ("Figure 6: 3D Coefficient Structure", plot_coefficient_structure_3d),
         ("Figure 7: Theoretical Framework", plot_theoretical_connections),
     ]
     
-    for title, plot_func in original_figures:
-        print(f"  Generating {title}...")
-        try:
-            fig = plot_func()
-            # Save to figures directory
-            fig_num = title.split(":")[0].replace("Figure ", "")
-            filename = os.path.join(FIGURES_DIR, f'selberg_zeta_fig{fig_num}_{timestamp}.png')
-            fig.savefig(filename, dpi=300, bbox_inches='tight')
-            plt.close(fig)
-            print(f"    ✓ Saved: {filename}")
-        except Exception as e:
-            print(f"    ✗ Error: {e}")
+    for i, (title, plot_func) in enumerate(figures, 1):
+        print(f"Generating {title}...")
+        fig = plot_func()
+        filename = f'selberg_zeta_fig{i}.png'
+        filepath = os.path.join(output_dir, filename)
+        fig.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close(fig)
+        print(f"  ✓ Saved to {filename}")
+        print()
     
+    print("=" * 70)
+    print("WHITE PAPER VISUALIZATION COMPLETE")
+    print("=" * 70)
     print()
-    
-    # Step 5: Generate NEW comprehensive QMC comparison figure
-    print("Step 5: Generating NEW comprehensive QMC analysis figure...")
-    print("-" * 80)
-    plot_qmc_comparison_new(analysis_results, timestamp)
+    print("Key Findings Illustrated:")
+    print("  1. Periodic orbit count N_n grows exponentially with entropy")
+    print("  2. Zeta moments ∑c_k² correlate perfectly with entropy (R²≈1)")
+    print("  3. High-entropy systems exhibit 'proximal snap' for QMC")
+    print("  4. Trace-11 system achieves 46% improvement over random")
+    print("  5. Spectral gap Δ and entropy h jointly determine efficiency")
+    print("  6. Predictive power: log(moment) → sampling quality")
     print()
-    
-    # Summary
-    print("=" * 80)
-    print("ANALYSIS COMPLETE")
-    print("=" * 80)
+    print("Theoretical synthesis connects:")
+    print("  • Classical Selberg zeta (hyperbolic surfaces)")
+    print("  • Ruelle dynamical zeta (Anosov systems)")
+    print("  • QMC sampling efficiency (computational applications)")
     print()
-    print("Key Updates (Z Framework Compliant):")
-    print(f"  ✓ Replaced Monte Carlo discrepancy with scipy.stats.qmc (CD/WD)")
-    print(f"  ✓ Expanded matrix set from 4 to {len(matrices)} matrices")
-    print(f"  ✓ Multi-N sweep: {n_values}")
-    print(f"  ✓ Bootstrap 95% CIs for all metrics ({n_seeds} seeds)")
-    print(f"  ✓ Permutation tests for correlations (p-values reported)")
-    print(f"  ✓ Baseline comparisons (Sobol, Halton, Random)")
-    print()
-    print("Output Directories:")
-    print(f"  Figures: {FIGURES_DIR}/")
-    print(f"  Tables:  {TABLES_DIR}/")
-    print()
-    print(f"Timestamp: {timestamp}")
-    print()
-    
-    # Statistical Summary
-    if len(analysis_results['anosov_data']) > 0:
-        print("Statistical Summary (N=10000):")
-        print("-" * 80)
-        
-        # Get mean discrepancies
-        all_cd = []
-        for matrix_result in analysis_results['anosov_data']:
-            if 10000 in matrix_result['by_n']:
-                all_cd.extend(matrix_result['by_n'][10000]['cd'])
-        
-        if all_cd:
-            mean, lower, upper = bootstrap_ci(np.array(all_cd), n_boot=1000, seed=42)
-            print(f"  Anosov Mean CD: {mean:.6f} [{lower:.6f}, {upper:.6f}]")
-        
-        # Baseline comparisons
-        for method in ['sobol', 'halton', 'random']:
-            cd_vals = np.array(analysis_results['baseline_data'][method][10000]['cd'])
-            mean, lower, upper = bootstrap_ci(cd_vals, n_boot=1000, seed=42)
-            print(f"  {method.capitalize()} Mean CD: {mean:.6f} [{lower:.6f}, {upper:.6f}]")
-    
-    print()
-    print("=" * 80)
-
+    print(f"All figures saved to: {output_dir}")
 
 if __name__ == "__main__":
     generate_all_plots()
