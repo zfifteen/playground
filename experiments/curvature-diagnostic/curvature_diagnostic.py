@@ -74,7 +74,9 @@ def run_analysis(max_n: int, v_param: float, bootstrap_samples: int) -> dict:
     mean_acc = np.mean(accuracies)
     ci = np.percentile(accuracies, [2.5, 97.5])
     
-    # Z-normalization
+    # Z-normalization: Transform number space according to curvature
+    # Z(n) = n / exp(v × κ(n)) where v is the traversal rate parameter
+    # This transformation reveals structural invariants in the cognitive number theory framework
     deltas = v_param * kappas
     z = ns / np.exp(deltas)
     
