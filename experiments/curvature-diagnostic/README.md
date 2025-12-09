@@ -218,7 +218,7 @@ This experiment is part of the playground repository for research and educationa
 
 ## Contact
 
-For questions or collaboration on curvature diagnostics and cognitive number theory:
+For questions or collaboration on curvature diagnostic and cognitive number theory:
 - Repository: zfifteen/playground
 - Experiment: experiments/curvature-diagnostic/
 

@@ -82,7 +82,7 @@ def run_analysis(max_n: int, v_param: float, bootstrap_samples: int) -> dict:
     
     # Calculate delta from baseline (50%)
     baseline = 0.5
-    delta_from_baseline = (mean_acc - baseline) / baseline * 100
+    delta_from_baseline = (accuracy - baseline) / baseline * 100
     
     # Additional statistics
     prime_count = np.sum(primes)
@@ -98,7 +98,8 @@ def run_analysis(max_n: int, v_param: float, bootstrap_samples: int) -> dict:
     f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
     
     return {
-        'accuracy': mean_acc,
+        'accuracy': accuracy,  # Use full dataset accuracy
+        'bootstrap_mean_accuracy': mean_acc,  # Mean of bootstrap samples (for reference)
         'ci': ci.tolist(),
         'delta_from_baseline_pct': delta_from_baseline,
         'kappas': kappas,
