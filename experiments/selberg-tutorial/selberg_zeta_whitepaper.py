@@ -290,7 +290,7 @@ def save_comprehensive_tables(results, timestamp):
             cd_vals = results['baseline_data'][method][n]['cd']
             cd_mean, cd_lower, cd_upper = bootstrap_ci(np.array(cd_vals), n_boot=1000, seed=42)
             row[f'{method}_cd'] = cd_mean
-            row[f'{method}_cd_ci'] = f"[{cd_lower:.6f}, {cd_upper:.6f}]"
+            row[f'{method}_cd_ci'] = f"[{cd_lower:.8e}, {cd_upper:.8e}]"
         
         # Anosov (average across all matrices)
         anosov_cd_vals = []
@@ -301,7 +301,7 @@ def save_comprehensive_tables(results, timestamp):
         if anosov_cd_vals:
             cd_mean, cd_lower, cd_upper = bootstrap_ci(np.array(anosov_cd_vals), n_boot=1000, seed=42)
             row['anosov_cd_mean'] = cd_mean
-            row['anosov_cd_ci'] = f"[{cd_lower:.6f}, {cd_upper:.6f}]"
+            row['anosov_cd_ci'] = f"[{cd_lower:.8e}, {cd_upper:.8e}]"
         
         summary_data.append(row)
     
@@ -581,11 +581,11 @@ def plot_qmc_comparison_new(analysis_results, timestamp):
                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
                 verticalalignment='top')
         
-        # Permutation test
+        # Permutation test (with Bonferroni correction for 2 tests: entropy and spectral gap)
         corr, p_val = permutation_test_correlation(np.array(entropies), 
                                                    np.array(mean_discrepancies), 
-                                                   n_perm=1000, seed=42)
-        ax2.text(0.05, 0.75, f"p-value: {p_val:.4f}", 
+                                                   n_perm=1000, seed=42, bonferroni_k=2)
+        ax2.text(0.05, 0.75, f"p-value: {p_val:.4f}\n(Bonf. α=0.025)", 
                 transform=ax2.transAxes, fontsize=9,
                 bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.8),
                 verticalalignment='top')
@@ -611,6 +611,15 @@ def plot_qmc_comparison_new(analysis_results, timestamp):
         ax3.text(0.05, 0.95, f"R² = {r_sq:.3f}", 
                 transform=ax3.transAxes, fontsize=9,
                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
+                verticalalignment='top')
+        
+        # Permutation test for spectral gap correlation (with Bonferroni correction)
+        corr_gap, p_val_gap = permutation_test_correlation(np.array(spectral_gaps), 
+                                                           np.array(mean_discrepancies), 
+                                                           n_perm=1000, seed=42, bonferroni_k=2)
+        ax3.text(0.05, 0.75, f"p-value: {p_val_gap:.4f}\n(Bonf. α=0.025)", 
+                transform=ax3.transAxes, fontsize=9,
+                bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.8),
                 verticalalignment='top')
     
     ax3.set_xlabel('Spectral Gap Δ', fontsize=11)
