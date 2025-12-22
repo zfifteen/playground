@@ -1,0 +1,15 @@
+Metric,Value
+Count,78497
+Mean,0.000167
+Std Dev,0.003816
+Min,0.000002
+Max,0.510826
+Median,0.000025
+Skewness,89.8133
+Excess Kurtosis,9716.9138
+Q1 Mean,0.000724
+Q5 Mean,0.000015
+Decay Ratio (Q1/Q5),46.81
+Regression Slope,-1.445237e-04
+R²,0.5383
+p-value,1.5824e-01
