@@ -53,13 +53,14 @@ class TestAutocorrelation(unittest.TestCase):
     def test_compute_autocorrelation_ar_process(self):
         """Test with AR(1) process - should have decaying autocorrelation"""
         np.random.seed(42)
-        # Generate AR(1) process: x_t = 0.7 * x_{t-1} + e_t
+        # Generate AR(1) process using statsmodels
+        from statsmodels.tsa.arima_process import ArmaProcess
         n = 10000
         phi = 0.7
-        data = np.zeros(n)
-        data[0] = np.random.normal()
-        for i in range(1, n):
-            data[i] = phi * data[i-1] + np.random.normal()
+        ar = np.array([1, -phi])  # AR(1) coefficient
+        ma = np.array([1])  # No MA component
+        arma_process = ArmaProcess(ar, ma)
+        data = arma_process.generate_sample(nsample=n)
         
         result = compute_autocorrelation(data, nlags=20)
         
@@ -112,13 +113,14 @@ class TestAutocorrelation(unittest.TestCase):
     def test_perform_ljung_box_ar_process(self):
         """Test Ljung-Box on AR process - should reject null hypothesis"""
         np.random.seed(42)
-        # Generate AR(1) process with strong autocorrelation
+        # Generate AR(1) process with strong autocorrelation using statsmodels
+        from statsmodels.tsa.arima_process import ArmaProcess
         n = 10000
         phi = 0.9
-        data = np.zeros(n)
-        data[0] = np.random.normal()
-        for i in range(1, n):
-            data[i] = phi * data[i-1] + np.random.normal()
+        ar = np.array([1, -phi])  # AR(1) coefficient
+        ma = np.array([1])  # No MA component
+        arma_process = ArmaProcess(ar, ma)
+        data = arma_process.generate_sample(nsample=n)
         
         result = perform_ljung_box(data, lags=20)
         
