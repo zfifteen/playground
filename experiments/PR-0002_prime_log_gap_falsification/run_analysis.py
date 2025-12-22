@@ -24,7 +24,14 @@ def run_full_analysis(limit: int, save_data: bool = True):
     print(f"Generated {count} primes up to {limit}")
 
     # Validate count
-    expected = {10**6: 78498, 10**7: 664579, 10**8: 5761455}[limit]
+    expected_counts = {10**6: 78498, 10**7: 664579, 10**8: 5761455}
+    expected = expected_counts.get(limit)
+    if expected is None:
+        supported_limits = ", ".join(str(k) for k in sorted(expected_counts.keys()))
+        raise ValueError(
+            f"Unsupported limit {limit}. Expected one of: {supported_limits} "
+            "(corresponding to 10**6, 10**7, 10**8)."
+        )
     if abs(count - expected) > 1:
         print(f"Warning: Prime count {count} deviates from expected {expected}")
     else:
