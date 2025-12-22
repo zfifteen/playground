@@ -1,5 +1,4 @@
 import unittest
-import numpy as np
 from src.prime_generator import PrimeGenerator
 
 class TestPrimeGenerator(unittest.TestCase):
