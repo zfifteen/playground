@@ -194,10 +194,11 @@ pip install numpy scipy matplotlib statsmodels
 
 | Scale | Primes | Time (--autocorr none) | Time (--autocorr ljungbox) | Data Size | Status |
 |-------|--------|-------------------------|----------------------------|-----------|--------|
-| 10^6 | 78,498 | ~10s | ~13s (4x slower) | 2.5 MB | ✅ Validated |
-| 10^7 | 664,579 | ~60s | ~95s (4-15x slower) | 26 MB | ✅ Validated |
-| 10^8 | 5.76M | ~10 min* | ~2-3 hrs* | ~180 MB* | ⚠️ Estimated |
-| 10^9 | 50.8M | ~2 hrs* | ~50+ hrs* | ~1.6 GB* | ⚠️ Estimated |
+| 10^5 | 9,592 | 4.1s | N/A | ~0.3 MB | ✅ Validated |
+| 10^6 | 78,498 | 6.4s | ~8.9s (1.4x slower) | 2.5 MB | ✅ Validated |
+| 10^7 | 664,579 | 22.6s | ~60s (2.7x slower) | 26 MB | ✅ Validated |
+| 10^8 | ~5.8M | ~3-5 min* | ~20-40 min* | ~180 MB* | ⚠️ Estimated |
+| 10^9 | ~50.8M | ~30-60 min* | ~5-10 hrs* | ~1.6 GB* | ⚠️ Estimated |
 
 *Estimated based on scaling analysis. Ljung-Box has O(n²) complexity and dominates runtime at scale. See `PERFORMANCE_ANALYSIS.md` and `RESULTS_AT_SCALE.md` for details.
 
