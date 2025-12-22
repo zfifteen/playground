@@ -60,7 +60,11 @@ def plot_qq_lognormal(log_gaps: np.ndarray, save_path: str = None):
 
 
 def plot_decay_trend(
-    bin_means: np.ndarray, decile_means: np.ndarray = None, save_path: str = None
+    bin_means: np.ndarray,
+    save_path: str = None,
+    title_suffix: str = None,
+    *,
+    decile_means: np.ndarray = None
 ):
     """
     Line plot showing how average log-gaps change across prime groups.
@@ -71,6 +75,12 @@ def plot_decay_trend(
     Y-axis: average gap in that bin.
     A downward slope indicates "decay" – gaps shrinking relatively as primes grow.
     This plot visually tests the damping hypothesis.
+    
+    Args:
+        bin_means: Array of bin means (primary analysis, default 50 bins)
+        save_path: Optional path to save the plot as PNG
+        title_suffix: Optional suffix for the plot title (e.g., "(N=1,000,000)")
+        decile_means: Optional legacy decile means for comparison overlay (keyword-only)
     """
     plt.figure(figsize=(12, 6))  # Wide for trend visibility with more bins
     x_bins = np.arange(len(bin_means))  # Indices 0-49 for 50 bins
@@ -90,7 +100,10 @@ def plot_decay_trend(
     
     plt.xlabel("Bin Index")  # Group position
     plt.ylabel("Mean Log-Gap")  # Average value
-    plt.title("Log-Gap Mean Decay Trend (50 Bins)")  # Emphasizes decay
+    title = "Log-Gap Mean Decay Trend (50 Bins)"
+    if title_suffix:
+        title = f"{title} {title_suffix}"
+    plt.title(title)  # Emphasizes decay
     plt.legend()  # Show labels
     plt.grid(True, alpha=0.3)  # Light grid
     if save_path:
@@ -163,7 +176,7 @@ def generate_all_plots(
     plot_log_gap_histogram(log_gaps, os.path.join(output_dir, "log_gap_histogram.png"))
     plot_qq_lognormal(log_gaps, os.path.join(output_dir, "qq_plot_lognormal.png"))
     plot_decay_trend(
-        bin_means, decile_means, os.path.join(output_dir, "decay_trend.png")
+        bin_means, os.path.join(output_dir, "decay_trend.png"), decile_means=decile_means
     )
     plot_acf_pacf(acf_values, pacf_values, os.path.join(output_dir, "acf_pacf.png"))
 
