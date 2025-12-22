@@ -219,35 +219,72 @@ All plots demonstrate clear patterns consistent with the hypothesis.
 |-------|--------|------|-----------|--------|
 | 10^6 | 78,498 | 13.5s | ~2.5 MB | ✅ Tested |
 | 10^7 | 664,579 | 94.9s | ~26 MB | ✅ Tested |
-| 10^8 | 5,761,455 | ~12-20 min* | ~180 MB* | ⚠️ Estimated |
-| 10^9 | 50,847,534 | ~1.5-3 hrs* | ~1.6 GB* | ⚠️ Estimated |
+| 10^8 | 5,761,455 | ~45-60 min* | ~180 MB* | ⚠️ Estimated |
+| 10^9 | 50,847,534 | ~40-60 hrs* | ~1.6 GB* | ⚠️ Estimated |
 
-*Estimated based on observed sub-linear scaling (efficiency factor ~0.86)
+*Estimated based on detailed performance profiling showing super-linear scaling in core computation (see PERFORMANCE_ANALYSIS.md)
+
+**IMPORTANT NOTE ON SCALING:** The total pipeline time (13.5s → 94.9s) exhibits a time ratio of 7.0x for 8.5x more data, giving an efficiency ratio of 0.82. However, this includes visualization which scales sub-linearly due to downsampling. **The core statistical computation EXCLUDING visualization scales at exponent 1.39 (super-linear)**, dominated by the Ljung-Box autocorrelation test which has O(n²) complexity. See `PERFORMANCE_ANALYSIS.md` for detailed profiling results.
 
 ### Scaling Observations
 
-1. **Prime generation:** Scales well (segmented sieve is efficient)
-2. **Statistical analysis:** Scales linearly with data
-3. **Visualization:** Becomes bottleneck at very large scales
-   - Scatter plots with millions of points are slow
-   - Box plots with 100 bins over millions of data points are expensive
+1. **Prime generation:** Scales well (segmented sieve is efficient, caching is effective)
+2. **Statistical analysis:** Scales super-linearly due to Ljung-Box test bottleneck
+   - Ljung-Box alone: 0.58s at 10^6 → 44.5s at 10^7 (77x increase for 8.5x data)
+   - Accounts for 72% of computation time at 10^7 scale
+3. **Visualization:** Scales sub-linearly (downsampling keeps it manageable)
+   - Scatter plots limit to 10,000 points regardless of data size
+   - Box plots and other visualizations use fixed resolutions
 4. **Memory:** Peak usage ~3 GB at 10^7, stays manageable
+
+### Performance Breakdown at 10^7 Scale
+
+Based on detailed profiling (see `PERFORMANCE_ANALYSIS.md`):
+
+| Component | Time | % of Computation | Scaling Exponent |
+|-----------|------|------------------|------------------|
+| Ljung-Box Test | 44.5s | 72.3% | 2.03 (quadratic) |
+| KS Distribution Tests | 16.3s | 26.5% | 0.91 (linear) |
+| ACF/PACF | 0.53s | 0.9% | 0.92 (linear) |
+| Binning Analysis | 0.09s | 0.2% | 0.21 (sub-linear) |
+| Other Tests | <0.1s | <0.1% | Various |
+| **Total Computation** | **61.6s** | **100%** | **1.39 (super-linear)** |
+| Visualization | ~33s | N/A | ~0.63 (sub-linear) |
+| **Total Pipeline** | **~95s** | N/A | ~0.91 (near-linear) |
 
 ### Recommendations for Larger Scales (10^8, 10^9)
 
-Based on observed performance at 10^7, larger scales are feasible but require consideration:
+Based on observed performance bottlenecks, larger scales require special consideration:
 
-**For 10^8 scale (~12-20 minutes):**
-- Current implementation should work without modification
-- Ensure adequate RAM (8+ GB recommended)
-- Caching is essential for reasonable rerun times
+**For 10^8 scale (~45-60 minutes):**
+1. **Consider removing or optimizing Ljung-Box test** - this is the primary bottleneck
+   - Alternative: Use approximate autocorrelation test or sample-based approach
+   - Or accept that autocorrelation will take ~45 minutes alone
+2. **Ensure adequate RAM** (8+ GB recommended)
+3. **Caching is essential** for reasonable rerun times
+4. **Visualization will be manageable** due to downsampling
 
-**For 10^9 scale (~1.5-3 hours):**
-1. **Downsample visualizations:** Plot every Nth point for scatter plots
-2. **Parallel processing:** Use multiprocessing for independent plots
+**For 10^9 scale (~40-60 hours with current implementation):**
+1. **Ljung-Box test is impractical** at this scale (estimated ~40 hours for this test alone)
+   - MUST use alternative autocorrelation approach or skip this test
+2. **Parallel processing:** Use multiprocessing for independent components
 3. **Streaming statistics:** Compute moments incrementally to reduce memory
 4. **Hardware:** Use machine with 16+ GB RAM
-5. **Patience:** First run will take hours; use caching for subsequent analysis
+5. **Consider breaking into batches:** Analyze in chunks and aggregate results
+
+### Corrected Time Estimates
+
+Previous estimates were based on assumption of sub-linear scaling (0.86 efficiency factor) across all components. Corrected estimates based on actual profiling:
+
+**Without Ljung-Box test:**
+- 10^8: ~10-15 minutes (computation) + ~5 minutes (visualization) = **~15-20 minutes**
+- 10^9: ~1.5-2.5 hours (computation) + ~10 minutes (visualization) = **~2-3 hours**
+
+**With Ljung-Box test (current implementation):**
+- 10^8: ~45 minutes (computation, Ljung-Box dominates) + ~5 min (viz) = **~50 minutes**
+- 10^9: ~40-50 hours (computation, Ljung-Box dominates) + ~10 min (viz) = **~40-50 hours**
+
+For detailed profiling methodology and component-by-component analysis, see `PERFORMANCE_ANALYSIS.md`.
 
 ---
 
