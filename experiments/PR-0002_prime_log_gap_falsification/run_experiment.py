@@ -13,6 +13,7 @@ import sys
 import os
 import json
 import time
+import argparse
 from datetime import datetime
 
 # Add src to path
@@ -43,7 +44,7 @@ from visualization import (
 )
 
 
-def run_phase(scale, results_dir, verbose=True):
+def run_phase(scale, results_dir, verbose=True, autocorr_mode='none', max_lag=40, subsample_rate=None):
     """
     Run a single phase of the experiment.
     
@@ -51,6 +52,9 @@ def run_phase(scale, results_dir, verbose=True):
         scale: Upper bound for primes (e.g., 10**6)
         results_dir: Directory to save results
         verbose: Print progress
+        autocorr_mode: Autocorrelation test mode ('none', 'ljungbox', 'ljungbox-fixed', 'ljungbox-subsample')
+        max_lag: Maximum lag for Ljung-Box test
+        subsample_rate: Subsampling rate for ljungbox-subsample mode
         
     Returns:
         Dictionary with all analysis results
@@ -150,21 +154,52 @@ def run_phase(scale, results_dir, verbose=True):
     # 6. Autocorrelation tests (Tests T5, T6)
     if verbose:
         print(f"\n[6/6] Running autocorrelation tests (T5, T6)...")
-    acf_results = compute_autocorrelation_analysis(log_gaps, nlags=20)
+        print(f"  Mode: {autocorr_mode}")
+    
+    # Determine whether to run Ljung-Box based on mode
+    run_ljungbox = autocorr_mode != 'none'
+    
+    # Set subsample parameter based on mode
+    subsample = None
+    if autocorr_mode == 'ljungbox-subsample' and subsample_rate:
+        subsample = int(len(log_gaps) * subsample_rate) if subsample_rate < 1.0 else int(subsample_rate)
+    
+    # Run autocorrelation analysis with optional Ljung-Box
+    acf_results = compute_autocorrelation_analysis(
+        log_gaps, 
+        nlags=20,
+        run_ljungbox=run_ljungbox,
+        max_lag=max_lag,
+        subsample=subsample
+    )
+    
+    # Build results dict with optional fields
     results['autocorrelation'] = {
         'nlags': acf_results['nlags'],
         'acf': acf_results['acf'].tolist() if hasattr(acf_results['acf'], 'tolist') else list(acf_results['acf']),
         'significant_lags': acf_results['significant_lags'],
         'has_short_range_structure': acf_results['has_short_range_structure'],
-        'ljungbox_all_p_above_005': acf_results['ljungbox_all_p_above_005'],
-        'f4_falsified': acf_results['f4_falsified']
+        'ljungbox_status': acf_results['ljungbox_status'],
+        'autocorr_mode': autocorr_mode
     }
+    
+    # Add Ljung-Box results only if evaluated
+    if run_ljungbox and acf_results['ljungbox_all_p_above_005'] is not None:
+        results['autocorrelation']['ljungbox_all_p_above_005'] = acf_results['ljungbox_all_p_above_005']
+        results['autocorrelation']['f4_falsified'] = acf_results['f4_falsified']
+    else:
+        results['autocorrelation']['ljungbox_all_p_above_005'] = None
+        results['autocorrelation']['f4_falsified'] = None
     
     if verbose:
         print(f"  Significant lags: {acf_results['significant_lags']}")
         print(f"  Has short-range structure: {acf_results['has_short_range_structure']}")
-        print(f"  Ljung-Box all p > 0.05: {acf_results['ljungbox_all_p_above_005']}")
-        print(f"  F4 Falsified (white noise): {acf_results['f4_falsified']}")
+        if run_ljungbox:
+            print(f"  Ljung-Box all p > 0.05: {acf_results['ljungbox_all_p_above_005']}")
+            print(f"  F4 Falsified (white noise): {acf_results['f4_falsified']}")
+        else:
+            print(f"  Ljung-Box: not evaluated (autocorr mode = {autocorr_mode})")
+
     
     # Generate figures
     if verbose:
@@ -215,7 +250,7 @@ def summarize_falsification(all_results):
     summary = {
         'F1': {'description': 'Non-decreasing quintile trend', 'falsified': False, 'scales': []},
         'F2': {'description': 'Normal fits better than log-normal', 'falsified': False, 'scales': []},
-        'F4': {'description': 'White noise (no autocorrelation)', 'falsified': False, 'scales': []},
+        'F4': {'description': 'White noise (no autocorrelation)', 'falsified': False, 'scales': [], 'evaluated': False},
         'F5': {'description': 'Normal-like skewness/kurtosis', 'falsified': False, 'scales': []},
         'F6': {'description': 'Scale-dependent reversals', 'falsified': False, 'scales': []},
     }
@@ -229,9 +264,12 @@ def summarize_falsification(all_results):
             summary['F2']['falsified'] = True
             summary['F2']['scales'].append(scale)
         
-        if results['autocorrelation']['f4_falsified']:
-            summary['F4']['falsified'] = True
-            summary['F4']['scales'].append(scale)
+        # F4 only evaluated if Ljung-Box was run
+        if results['autocorrelation']['f4_falsified'] is not None:
+            summary['F4']['evaluated'] = True
+            if results['autocorrelation']['f4_falsified']:
+                summary['F4']['falsified'] = True
+                summary['F4']['scales'].append(scale)
         
         if results['skewness_kurtosis']['f5_falsified']:
             summary['F5']['falsified'] = True
@@ -253,27 +291,118 @@ def summarize_falsification(all_results):
     return summary
 
 
+def parse_arguments():
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description='Prime Log-Gap Falsification Experiment',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog='''
+Examples:
+  # Default fast run (no autocorrelation test - recommended for large scales):
+  python3 run_experiment.py --scales 1e6,1e7 --autocorr none
+
+  # Run with Ljung-Box test (slower, O(n²) cost):
+  python3 run_experiment.py --scales 1e6 --autocorr ljungbox --max-lag 50
+
+  # Run with fixed small lag for bounded cost:
+  python3 run_experiment.py --scales 1e6,1e7 --autocorr ljungbox-fixed --max-lag 40
+
+  # Run on subsample for approximate test at scale:
+  python3 run_experiment.py --scales 1e7 --autocorr ljungbox-subsample --subsample-rate 100000
+        '''
+    )
+    
+    parser.add_argument(
+        '--scales',
+        type=str,
+        default='1e6,1e7,1e8',
+        help='Comma-separated list of scales to test (e.g., "1e6,1e7,1e8"). Default: "1e6,1e7,1e8"'
+    )
+    
+    parser.add_argument(
+        '--autocorr',
+        type=str,
+        choices=['none', 'ljungbox', 'ljungbox-fixed', 'ljungbox-subsample'],
+        default='none',
+        help='''Autocorrelation test mode (default: none).
+        - none: Skip Ljung-Box test (fast, recommended for scale > 1e7).
+        - ljungbox: Run standard Ljung-Box test (O(n²), slow at scale).
+        - ljungbox-fixed: Run with fixed small max_lag for bounded cost.
+        - ljungbox-subsample: Run on subsample (approximate test).
+        '''
+    )
+    
+    parser.add_argument(
+        '--max-lag',
+        type=int,
+        default=40,
+        help='Maximum lag for Ljung-Box test (default: 40). Ignored if --autocorr=none.'
+    )
+    
+    parser.add_argument(
+        '--subsample-rate',
+        type=float,
+        default=None,
+        help='Subsampling rate for ljungbox-subsample mode. If < 1.0, treated as fraction; if >= 1, treated as count. Example: 0.1 or 100000'
+    )
+    
+    parser.add_argument(
+        '--bins',
+        type=int,
+        default=50,
+        help='Number of bins for trend analysis (default: 50)'
+    )
+    
+    parser.add_argument(
+        '--seed',
+        type=int,
+        default=42,
+        help='Random seed for reproducible subsampling (default: 42)'
+    )
+    
+    return parser.parse_args()
+
+
 def main():
     """Run the full experiment."""
+    args = parse_arguments()
+    
     print("=" * 70)
     print("PRIME LOG-GAP FALSIFICATION EXPERIMENT")
     print("PR-0002")
     print("=" * 70)
     print(f"\nStart time: {datetime.now().isoformat()}")
+    print(f"\nConfiguration:")
+    print(f"  Scales: {args.scales}")
+    print(f"  Autocorrelation mode: {args.autocorr}")
+    if args.autocorr != 'none':
+        print(f"  Max lag: {args.max_lag}")
+        if args.autocorr == 'ljungbox-subsample' and args.subsample_rate:
+            print(f"  Subsample rate: {args.subsample_rate}")
+    else:
+        print(f"  Ljung-Box test: DISABLED (default for performance)")
+        print(f"  Note: Autocorrelation claims require --autocorr=ljungbox")
     
     # Setup directories
     base_dir = os.path.dirname(__file__)
     results_dir = os.path.join(base_dir, 'results')
     os.makedirs(results_dir, exist_ok=True)
     
-    # Scales to test
-    scales = [10**6, 10**7, 10**8]
+    # Parse scales
+    scales = [int(float(s)) for s in args.scales.split(',')]
     
     all_results = {}
     
     # Run all phases
     for scale in scales:
-        results = run_phase(scale, results_dir, verbose=True)
+        results = run_phase(
+            scale, 
+            results_dir, 
+            verbose=True,
+            autocorr_mode=args.autocorr,
+            max_lag=args.max_lag,
+            subsample_rate=args.subsample_rate
+        )
         all_results[scale] = results
     
     # Cross-scale comparison
@@ -301,14 +430,22 @@ def main():
     
     for f_id, f_data in falsification.items():
         if f_id.startswith('F'):
-            status = "FALSIFIED" if f_data['falsified'] else "NOT FALSIFIED"
-            print(f"  {f_id}: {f_data['description']} - {status}")
+            if f_id == 'F4' and not f_data.get('evaluated', True):
+                status = "NOT EVALUATED (autocorr=none)"
+                print(f"  {f_id}: {f_data['description']} - {status}")
+            else:
+                status = "FALSIFIED" if f_data['falsified'] else "NOT FALSIFIED"
+                print(f"  {f_id}: {f_data['description']} - {status}")
     
     print(f"\n  {'='*50}")
     if falsification['hypothesis_falsified']:
         print("  CONCLUSION: HYPOTHESIS IS FALSIFIED")
     else:
-        print("  CONCLUSION: HYPOTHESIS IS SUPPORTED (not proven)")
+        if not falsification['F4']['evaluated']:
+            print("  CONCLUSION: HYPOTHESIS IS SUPPORTED (not proven)")
+            print("  NOTE: Autocorrelation (F4) not evaluated. Use --autocorr=ljungbox to verify.")
+        else:
+            print("  CONCLUSION: HYPOTHESIS IS SUPPORTED (not proven)")
     print(f"  {'='*50}")
     
     # Save results

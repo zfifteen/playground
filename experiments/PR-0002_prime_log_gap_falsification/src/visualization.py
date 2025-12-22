@@ -194,3 +194,71 @@ if __name__ == "__main__":
     generate_all_plots(
         log_gaps, bin_means, decile_means, acf_values, pacf_values
     )  # Save to default dir
+
+
+def plot_scale_comparison(all_results: dict, save_path: str = None):
+    """
+    Plot comparison of results across multiple scales.
+    
+    Visualizes how key metrics (like quintile means, slopes) vary with scale.
+    
+    Args:
+        all_results: Dictionary mapping scale to results
+        save_path: Path to save the plot (optional)
+    """
+    scales = sorted(all_results.keys())
+    
+    # Extract metrics for comparison
+    quintile_slopes = [all_results[s]['quintile']['slope'] for s in scales]
+    quintile_r2 = [all_results[s]['quintile']['r_squared'] for s in scales]
+    mean_log_gaps = [all_results[s]['descriptive']['mean'] for s in scales]
+    
+    # Create figure with subplots
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    fig.suptitle('Cross-Scale Comparison', fontsize=14, fontweight='bold')
+    
+    # Plot 1: Quintile slope vs scale
+    axes[0, 0].plot(scales, quintile_slopes, 'o-', linewidth=2, markersize=8)
+    axes[0, 0].set_xlabel('Scale (N)')
+    axes[0, 0].set_ylabel('Quintile Slope')
+    axes[0, 0].set_title('Decay Trend Consistency')
+    axes[0, 0].set_xscale('log')
+    axes[0, 0].grid(True, alpha=0.3)
+    axes[0, 0].axhline(y=0, color='r', linestyle='--', alpha=0.5, label='Zero slope')
+    axes[0, 0].legend()
+    
+    # Plot 2: R² vs scale
+    axes[0, 1].plot(scales, quintile_r2, 's-', linewidth=2, markersize=8, color='green')
+    axes[0, 1].set_xlabel('Scale (N)')
+    axes[0, 1].set_ylabel('R²')
+    axes[0, 1].set_title('Fit Quality Across Scales')
+    axes[0, 1].set_xscale('log')
+    axes[0, 1].set_ylim([0, 1])
+    axes[0, 1].grid(True, alpha=0.3)
+    
+    # Plot 3: Mean log-gap vs scale
+    axes[1, 0].plot(scales, mean_log_gaps, '^-', linewidth=2, markersize=8, color='purple')
+    axes[1, 0].set_xlabel('Scale (N)')
+    axes[1, 0].set_ylabel('Mean Log-Gap')
+    axes[1, 0].set_title('Average Gap Behavior')
+    axes[1, 0].set_xscale('log')
+    axes[1, 0].grid(True, alpha=0.3)
+    
+    # Plot 4: Summary table
+    axes[1, 1].axis('off')
+    summary_text = "Scale Summary:\n\n"
+    for scale in scales:
+        scale_name = f"10^{int(np.log10(scale))}"
+        slope = all_results[scale]['quintile']['slope']
+        r2 = all_results[scale]['quintile']['r_squared']
+        summary_text += f"{scale_name}:  slope={slope:.4e}, R²={r2:.3f}\n"
+    axes[1, 1].text(0.1, 0.5, summary_text, fontsize=11, family='monospace',
+                    verticalalignment='center')
+    
+    plt.tight_layout()
+    
+    if save_path:
+        plt.savefig(save_path, dpi=100, bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
