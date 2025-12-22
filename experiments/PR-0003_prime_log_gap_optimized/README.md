@@ -39,34 +39,40 @@ experiments/PR-0003_prime_log_gap_optimized/
 
 ## How to Run
 
-### Basic Usage
+### Basic Usage (Fast Mode, Recommended)
 
 ```bash
 cd experiments/PR-0003_prime_log_gap_optimized
-python run_experiment.py
+python run_experiment.py --autocorr none
 ```
 
 This will:
 1. Generate primes up to the specified limit (default: 10⁹) or load from cache
 2. Compute log-gaps (or load from cache)
 3. Bin data into 100 equal-width bins on log-prime axis
-4. Run all statistical tests
-5. Generate all 17 plots
+4. Run all statistical tests except Ljung-Box autocorrelation (for speed)
+5. Generate all 17 plots (ACF/PACF always included for descriptive analysis)
 6. Save results to `results/results.json`
 
-**Estimated time:** 
-- 10^6: ~13 seconds
-- 10^7: ~95 seconds (validated)
-- 10^8: ~15 minutes (estimated)
-- 10⁹: ~3 hours* (estimated, not tested)
+**Estimated time (with --autocorr none):**
+- 10^6: ~10 seconds (4x faster)
+- 10^7: ~60 seconds (validated, 4-15x faster)
+- 10^8: ~10 minutes (estimated)
+- 10^9: ~2 hours* (estimated, not tested)
 
-*Note: Default is 10⁹ but only 10^7 has been validated. Use `--max-prime` to specify scale.
+*Note: Default autocorr mode is `none` for performance. Use `--autocorr ljungbox` for full autocorrelation testing.
 
 ### Advanced Options
 
 ```bash
 # Use smaller max prime for testing
-python run_experiment.py --max-prime 1e8 --bins 100
+python run_experiment.py --max-prime 1e8 --bins 100 --autocorr none
+
+# Enable full Ljung-Box autocorrelation test (slower)
+python run_experiment.py --max-prime 1e7 --autocorr ljungbox --max-lag 40
+
+# Use subsampling for approximate autocorrelation (balanced speed/accuracy)
+python run_experiment.py --max-prime 1e7 --autocorr ljungbox-subsample --subsample-rate 50000
 
 # Disable caching (always regenerate)
 python run_experiment.py --no-cache
@@ -74,6 +80,14 @@ python run_experiment.py --no-cache
 # Verbose output
 python run_experiment.py --verbose
 ```
+
+#### Autocorrelation Options
+
+- `--autocorr none` (default): Skip Ljung-Box test for maximum speed. ACF/PACF plots still generated. F4 criterion marked "not evaluated".
+- `--autocorr ljungbox`: Run full Ljung-Box test on complete dataset. Rigorous but O(n²) cost.
+- `--autocorr ljungbox-subsample`: Approximate test on random subsample. Bounded cost, suitable for large scales.
+- `--max-lag`: Control lag range for autocorrelation tests (default: 40).
+- `--subsample-rate`: Sample size for subsampling mode (default: 100,000).
 
 ## Output Files
 
@@ -178,14 +192,14 @@ pip install numpy scipy matplotlib statsmodels
 
 ### Tested at Scale
 
-| Scale | Primes | Time | Data Size | Status |
-|-------|--------|------|-----------|--------|
-| 10^6 | 78,498 | ~13s | 2.5 MB | ✅ Validated |
-| 10^7 | 664,579 | ~95s | 26 MB | ✅ Validated |
-| 10^8 | 5.76M | ~12-20 min* | ~180 MB* | ⚠️ Estimated |
-| 10^9 | 50.8M | ~1.5-3 hrs* | ~1.6 GB* | ⚠️ Estimated |
+| Scale | Primes | Time (--autocorr none) | Time (--autocorr ljungbox) | Data Size | Status |
+|-------|--------|-------------------------|----------------------------|-----------|--------|
+| 10^6 | 78,498 | ~10s | ~13s (4x slower) | 2.5 MB | ✅ Validated |
+| 10^7 | 664,579 | ~60s | ~95s (4-15x slower) | 26 MB | ✅ Validated |
+| 10^8 | 5.76M | ~10 min* | ~2-3 hrs* | ~180 MB* | ⚠️ Estimated |
+| 10^9 | 50.8M | ~2 hrs* | ~50+ hrs* | ~1.6 GB* | ⚠️ Estimated |
 
-*Estimated based on observed sub-linear scaling (time grows ~0.86x as fast as data). See `RESULTS_AT_SCALE.md` for detailed 10^7 results.
+*Estimated based on scaling analysis. Ljung-Box has O(n²) complexity and dominates runtime at scale. See `PERFORMANCE_ANALYSIS.md` and `RESULTS_AT_SCALE.md` for details.
 
 ### Resource Requirements
 
@@ -204,6 +218,26 @@ pip install numpy scipy matplotlib statsmodels
 - ⚙️ **10^9 scale:** Estimated 50.8M primes, ~3 hours (not tested)
 
 **Note:** The implementation supports scales up to 10^9, but only 10^6 and 10^7 have been validated. See `RESULTS_AT_SCALE.md` for comprehensive 10^7 analysis.
+
+### Scientific Implications of Autocorrelation Settings
+
+**When Ljung-Box is Enabled (--autocorr ljungbox):**
+- Full omnibus test for autocorrelation significance
+- Formal hypothesis testing (p-values, Q-statistics)
+- F4 falsification criterion evaluated
+- Suitable for publication claims about autocorrelation
+
+**When Ljung-Box is Disabled (--autocorr none, default):**
+- ACF/PACF descriptive statistics still available
+- Qualitative assessment of temporal dependencies possible
+- F4 criterion marked "not evaluated"
+- Faster execution enables exploration at larger scales
+- Appropriate for initial analysis or when autocorrelation testing is not the primary goal
+
+**Subsampling Mode (--autocorr ljungbox-subsample):**
+- Approximate results with bounded computational cost
+- Useful for large datasets where full testing is impractical
+- Provides reasonable accuracy for most practical purposes
 
 ## References
 

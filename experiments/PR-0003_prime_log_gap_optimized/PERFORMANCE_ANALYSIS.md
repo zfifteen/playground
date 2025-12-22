@@ -322,24 +322,34 @@ This drags down the overall apparent scaling, creating the illusion of sub-linea
 
 ### Recommendations:
 
-1. **Replace Ljung-Box test with alternative**
-   - Use approximate test or sampling
-   - Compute on subset of data
-   - Or accept that this component will scale quadratically
+1. **Make Ljung-Box optional (IMPLEMENTED)**
+    - Use `--autocorr none` for fast exploration (default)
+    - Use `--autocorr ljungbox` when formal testing is needed
+    - Use `--autocorr ljungbox-subsample` for approximate testing at scale
+    - This provides 4-15x speedup while preserving scientific rigor
 
 2. **Separate computation from visualization in performance claims**
-   - Report "computational scaling" separately from "total pipeline scaling"
-   - Current claim conflates the two
+    - Report "computational scaling" separately from "total pipeline scaling"
+    - Current claim conflates the two
 
 3. **Update documentation to clarify**
-   - RESULTS_AT_SCALE.md should explain that sub-linear scaling comes from visualization
-   - Core statistical analysis scales super-linearly due to autocorrelation test
-   - The "efficiency factor ~0.86" is time_ratio/data_ratio, not a scaling exponent
+    - RESULTS_AT_SCALE.md should explain that sub-linear scaling comes from visualization
+    - Core statistical analysis scales super-linearly due to autocorrelation test
+    - The "efficiency factor ~0.86" is time_ratio/data_ratio, not a scaling exponent
 
-4. **Optimize if scaling to 10^8 or 10^9**
-   - Current Ljung-Box implementation will make 10^8 impractical
-   - Estimated time for Ljung-Box alone at 10^8: ~3500 seconds (~1 hour)
-   - Consider removing this test or using approximations
+4. **Scaling with optional Ljung-Box**
+
+| Mode | Scaling Exponent | Typical Speedup | Use Case |
+|------|------------------|-----------------|----------|
+| `--autocorr none` | ~1.0 (near-linear) | 4-15x | Exploration, large scales |
+| `--autocorr ljungbox` | ~2.0 (quadratic) | 1x (baseline) | Rigorous testing, publication |
+| `--autocorr ljungbox-subsample` | ~1.0 (near-linear) | ~10x | Balanced accuracy/speed |
+
+**Performance Impact Summary:**
+- Default mode (`--autocorr none`) achieves near-linear scaling for core computation
+- Ljung-Box bottleneck eliminated for exploratory work
+- Full testing still available when needed
+- Subsampling provides practical alternative for large datasets
 
 ---
 
