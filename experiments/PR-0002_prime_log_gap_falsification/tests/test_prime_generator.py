@@ -18,8 +18,7 @@ from prime_generator import (
     simple_sieve, 
     segmented_sieve, 
     generate_primes_to_limit,
-    compute_log_gaps,
-    KNOWN_PI_VALUES
+    compute_log_gaps
 )
 import numpy as np
 
