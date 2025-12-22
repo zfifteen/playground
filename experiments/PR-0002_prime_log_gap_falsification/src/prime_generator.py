@@ -57,24 +57,9 @@ class PrimeGenerator:
             
             # Mark composites in this segment using small_primes
             for p in small_primes:
-                # Find first multiple of p >= low
-                start = (low + p - 1) // p
-                start_idx = start * p - low
-                
-                # If start index is before the current segment (shouldn't happen with correct logic 
-                # but good for safety if p is large), adjust.
-                # Also start*p might be p*p if we were strictly following basic sieve, 
-                # but here we just need multiples in range.
-                # Since p <= sqrt_limit, p*p <= limit.
-                
-                # However, for segmented sieve, we must start marking from max(p*p, first_multiple_in_segment)
-                # But since p comes from simple_sieve(sqrt_limit), p*p is already covered or handled.
-                # Actually, simple_sieve returns primes <= sqrt_limit.
-                # The first number in segment is 'low'. 'low' > sqrt_limit.
-                # So p*p <= sqrt_limit^2 <= limit.
-                # Ideally we start at max(p*p, first_multiple_in_segment). 
-                # Since low > sqrt_limit >= p, p*p might be less than low.
-                
+                # For segmented sieve, start marking from max(p*p, first_multiple_in_segment)
+                # Since p <= sqrt_limit and low > sqrt_limit, p*p might be less than low,
+                # so we take the maximum of p*p and the first multiple of p >= low
                 start_val = max(p*p, (low + p - 1) // p * p)
                 start_idx = start_val - low
                 
