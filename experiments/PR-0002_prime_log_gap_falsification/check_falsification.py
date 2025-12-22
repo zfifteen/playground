@@ -132,10 +132,9 @@ def check_falsification(all_results):
     slope = res['quintile_regression']['slope']
     p_val_slope = res['quintile_regression']['p_value']
     if slope >= 0 and p_val_slope > 0.05: # Strict check? Spec says slope >= 0 with p > 0.05
-        # If slope is positive and significant, that's also bad for hypothesis which predicts decay
-        if slope >= 0:
-            falsified = True
-            reasons.append(f"F1: Quintile means show non-decreasing trend (Slope={slope:.2e})")
+        # Non-decreasing trend is bad for the hypothesis which predicts decay
+        falsified = True
+        reasons.append(f"F1: Quintile means show non-decreasing trend (Slope={slope:.2e})")
 
     # F2: Normal fits better than LogNormal
     ks_norm = res['distribution_fits']['normal']['ks_stat']
