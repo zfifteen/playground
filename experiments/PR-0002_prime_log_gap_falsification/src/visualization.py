@@ -60,30 +60,50 @@ def plot_qq_lognormal(log_gaps: np.ndarray, save_path: str = None):
 
 
 def plot_decay_trend(
-    quintile_means: np.ndarray, decile_means: np.ndarray, save_path: str = None
+    bin_means: np.ndarray,
+    save_path: str = None,
+    title_suffix: str = None,
+    *,
+    decile_means: np.ndarray = None
 ):
     """
     Line plot showing how average log-gaps change across prime groups.
 
-    Quintiles (5 groups) and deciles (10 groups) divide the prime sequence.
-    X-axis: group index (0 = smallest primes, higher = larger primes).
-    Y-axis: average gap in that group.
+    Primary analysis uses 50 bins for robust statistical proof.
+    If decile_means is provided (legacy), it will be plotted alongside for comparison.
+    X-axis: bin index (0 = smallest primes, higher = larger primes).
+    Y-axis: average gap in that bin.
     A downward slope indicates "decay" – gaps shrinking relatively as primes grow.
-    Circles for quintiles, squares for deciles; legend distinguishes them.
     This plot visually tests the damping hypothesis.
+    
+    Args:
+        bin_means: Array of bin means (primary analysis, default 50 bins)
+        save_path: Optional path to save the plot as PNG
+        title_suffix: Optional suffix for the plot title (e.g., "(N=1,000,000)")
+        decile_means: Optional legacy decile means for comparison overlay (keyword-only)
     """
-    plt.figure(figsize=(10, 6))  # Wide for trend visibility
-    x_quint = np.arange(len(quintile_means))  # Indices 0-4
-    x_decile = np.arange(len(decile_means))  # Indices 0-9
+    plt.figure(figsize=(12, 6))  # Wide for trend visibility with more bins
+    x_bins = np.arange(len(bin_means))  # Indices 0-49 for 50 bins
     plt.plot(
-        x_quint, quintile_means, "o-", label="Quintiles", markersize=8
+        x_bins, bin_means, "o-", label=f"{len(bin_means)} Bins", markersize=4, alpha=0.8
     )  # Circles with line
-    plt.plot(
-        x_decile, decile_means, "s-", label="Deciles", markersize=6
-    )  # Squares with line
+    
+    if decile_means is not None:
+        x_decile = np.arange(len(decile_means))  # Indices 0-9
+        # Scale x-axis to align decile bins with primary bin positions
+        decile_scale_factor = len(bin_means) / len(decile_means)
+        x_decile_scaled = x_decile * decile_scale_factor
+        plt.plot(
+            x_decile_scaled, decile_means, "s-", 
+            label="Deciles (legacy)", markersize=6, alpha=0.6
+        )  # Squares with line, scaled x-axis
+    
     plt.xlabel("Bin Index")  # Group position
     plt.ylabel("Mean Log-Gap")  # Average value
-    plt.title("Log-Gap Mean Decay Trend")  # Emphasizes decay
+    title = "Log-Gap Mean Decay Trend (50 Bins)"
+    if title_suffix:
+        title = f"{title} {title_suffix}"
+    plt.title(title)  # Emphasizes decay
     plt.legend()  # Show labels
     plt.grid(True, alpha=0.3)  # Light grid
     if save_path:
@@ -135,7 +155,7 @@ def plot_acf_pacf(
 
 def generate_all_plots(
     log_gaps: np.ndarray,
-    quintile_means: np.ndarray,
+    bin_means: np.ndarray,
     decile_means: np.ndarray,
     acf_values: np.ndarray,
     pacf_values: np.ndarray,
@@ -148,13 +168,15 @@ def generate_all_plots(
     It creates the full figure set: histogram, Q-Q, decay, ACF/PACF.
     Output directory is created if needed; files are named clearly for reports.
     Used by run_analysis.py to produce the results/figures/ folder.
+    
+    Note: bin_means should be 50-bin means for robust statistical analysis.
     """
     os.makedirs(output_dir, exist_ok=True)  # Ensure dir exists
     # Generate each plot with its filename
     plot_log_gap_histogram(log_gaps, os.path.join(output_dir, "log_gap_histogram.png"))
     plot_qq_lognormal(log_gaps, os.path.join(output_dir, "qq_plot_lognormal.png"))
     plot_decay_trend(
-        quintile_means, decile_means, os.path.join(output_dir, "decay_trend.png")
+        bin_means, os.path.join(output_dir, "decay_trend.png"), decile_means=decile_means
     )
     plot_acf_pacf(acf_values, pacf_values, os.path.join(output_dir, "acf_pacf.png"))
 
@@ -163,12 +185,12 @@ if __name__ == "__main__":
     # Test the plotting functions with dummy data
     np.random.seed(42)  # Reproducible
     log_gaps = np.random.lognormal(0, 1, 1000)  # Fake log-normal gaps
-    quintile_means = np.array([1.0, 0.8, 0.6, 0.4, 0.2])  # Decreasing averages
+    bin_means = np.linspace(1.0, 0.1, 50)  # 50 decreasing averages
     decile_means = np.array(
         [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
-    )  # More steps
+    )  # Legacy deciles
     acf_values = np.random.randn(21) * 0.1  # Random correlations
     pacf_values = np.random.randn(21) * 0.1
     generate_all_plots(
-        log_gaps, quintile_means, decile_means, acf_values, pacf_values
+        log_gaps, bin_means, decile_means, acf_values, pacf_values
     )  # Save to default dir
