@@ -4,7 +4,7 @@ import sys
 
 sys.path.append("src")
 
-from prime_generator import generate_primes_up_to, count_primes_up_to
+from prime_generator import generate_primes_up_to
 from log_gap_analysis import analyze_log_gaps
 from distribution_tests import run_distribution_tests, find_best_fit
 from autocorrelation import autocorrelation_analysis
