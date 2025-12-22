@@ -170,3 +170,74 @@ if __name__ == "__main__":
     print("Best fit:", find_best_fit(tests))  # Show winner
     for dist, result in tests.items():  # Print each result
         print(f"{dist}: KS={result['ks_stat']:.4f}, p={result['p_value']:.4f}")
+
+
+# Compatibility wrappers for run_experiment.py
+def fit_distributions(log_gaps: np.ndarray) -> dict:
+    """
+    Fit multiple distributions to log-gaps data.
+    
+    Compatibility wrapper that runs all distribution tests.
+    """
+    return run_distribution_tests(log_gaps)
+
+
+def compare_distributions(dist_fits: dict) -> dict:
+    """
+    Compare distribution fits and determine best match.
+    
+    Args:
+        dist_fits: Dictionary of distribution test results
+        
+    Returns:
+        Dictionary with comparison metrics and falsification checks
+    """
+    best_fit, best_ks = find_best_fit(dist_fits)
+    
+    normal_ks = dist_fits['normal']['ks_stat']
+    lognormal_ks = dist_fits['lognormal']['ks_stat']
+    
+    # KS ratio: how much better is lognormal than normal?
+    ks_ratio_normal_lognormal = normal_ks / lognormal_ks if lognormal_ks > 0 else float('inf')
+    
+    # F2 falsification: Normal fits better than log-normal
+    f2_falsified = normal_ks < lognormal_ks
+    
+    return {
+        'best_fit': best_fit,
+        'best_ks': best_ks,
+        'normal_ks': normal_ks,
+        'lognormal_ks': lognormal_ks,
+        'ks_ratio_normal_lognormal': ks_ratio_normal_lognormal,
+        'f2_falsified': f2_falsified,
+        'all_fits': dist_fits
+    }
+
+
+def compute_skewness_kurtosis_check(log_gaps: np.ndarray) -> dict:
+    """
+    Check if skewness and kurtosis are normal-like.
+    
+    Returns falsification check for F5 (normal-like distribution).
+    """
+    skewness = stats.skew(log_gaps)
+    kurtosis = stats.kurtosis(log_gaps)  # Excess kurtosis
+    
+    # F5: Check if distribution is normal-like
+    # Normal has skewness ~ 0 and excess kurtosis ~ 0
+    # We use generous thresholds: |skewness| < 1 and |kurtosis| < 3
+    is_normal_like_skewness = abs(skewness) < 1.0
+    is_normal_like_kurtosis = abs(kurtosis) < 3.0
+    is_normal_like = is_normal_like_skewness and is_normal_like_kurtosis
+    
+    # F5 is falsified if distribution IS normal-like (we expect heavy tails)
+    f5_falsified = is_normal_like
+    
+    return {
+        'skewness': skewness,
+        'kurtosis': kurtosis,
+        'is_normal_like_skewness': is_normal_like_skewness,
+        'is_normal_like_kurtosis': is_normal_like_kurtosis,
+        'is_normal_like': is_normal_like,
+        'f5_falsified': f5_falsified
+    }

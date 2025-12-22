@@ -114,6 +114,65 @@ def count_primes_up_to(limit: int) -> int:
     return sum(1 for _ in segmented_sieve(limit))  # Count by iterating the generator
 
 
+# Known values of π(x) (prime counting function) for validation
+KNOWN_PI_VALUES = {
+    10**6: 78498,
+    10**7: 664579,
+    10**8: 5761455,
+}
+
+
+def generate_primes_to_limit(limit: int, validate: bool = True) -> np.ndarray:
+    """
+    Generate primes up to limit with optional validation.
+    
+    This is a wrapper around generate_primes_up_to that adds validation
+    against known prime counts for extra confidence.
+    
+    Args:
+        limit: Upper bound for prime generation
+        validate: Whether to validate count against known values (default: True)
+        
+    Returns:
+        NumPy array of primes up to limit
+        
+    Raises:
+        ValueError: If validation fails
+    """
+    primes = generate_primes_up_to(limit)
+    
+    if validate and limit in KNOWN_PI_VALUES:
+        expected = KNOWN_PI_VALUES[limit]
+        actual = len(primes)
+        if actual != expected:
+            raise ValueError(f"Prime count mismatch at {limit}: expected {expected}, got {actual}")
+    
+    return primes
+
+
+def compute_log_gaps(primes: np.ndarray) -> dict:
+    """
+    Compute log-gaps from primes.
+    
+    This is a compatibility wrapper that returns both the log-gaps array
+    and additional metadata expected by run_experiment.py.
+    
+    Args:
+        primes: Array of prime numbers
+        
+    Returns:
+        Dictionary with 'log_gaps' and 'regular_gaps' keys
+    """
+    log_primes = np.log(primes.astype(np.float64))
+    log_gaps = np.diff(log_primes)
+    regular_gaps = np.diff(primes)
+    
+    return {
+        'log_gaps': log_gaps,
+        'regular_gaps': regular_gaps
+    }
+
+
 if __name__ == "__main__":
     # Quick test to make sure everything works
     print("Testing prime generation...")

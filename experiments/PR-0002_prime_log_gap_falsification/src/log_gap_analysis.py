@@ -205,3 +205,136 @@ if __name__ == "__main__":
     print("50-bin regression:", analysis["bin_regression"])  # Primary trend check
     print("Quintile means (legacy):", analysis["quintile_means"])  # Legacy 5-bin averages
     print("Quintile regression (legacy):", analysis["quintile_regression"])  # Legacy trend
+
+
+# Compatibility wrappers for run_experiment.py
+def compute_descriptive_stats(log_gaps: np.ndarray) -> dict:
+    """
+    Compute descriptive statistics for log-gaps.
+    
+    Compatibility wrapper for run_experiment.py.
+    """
+    return {
+        "count": len(log_gaps),
+        "mean": np.mean(log_gaps),
+        "std": np.std(log_gaps),
+        "min": np.min(log_gaps),
+        "max": np.max(log_gaps),
+        "skewness": stats.skew(log_gaps),
+        "kurtosis": stats.kurtosis(log_gaps),
+    }
+
+
+def compute_quintile_analysis(log_gaps: np.ndarray) -> dict:
+    """
+    Analyze log-gaps using quintiles (5 bins).
+    
+    Returns quintile analysis with regression and falsification check.
+    """
+    quintile_means = get_quintile_means(log_gaps)
+    slope, intercept, r_squared, p_value = regression_analysis(quintile_means)
+    
+    # F1 falsification: Check if trend is monotonically decreasing
+    is_monotonic_decreasing = all(
+        quintile_means[i] >= quintile_means[i+1] for i in range(len(quintile_means)-1)
+    )
+    f1_falsified = not is_monotonic_decreasing
+    
+    decay_ratio = quintile_means[0] / quintile_means[-1] if quintile_means[-1] > 0 else float('inf')
+    
+    return {
+        'bin_means': quintile_means,
+        'means': quintile_means,  # Alias for compatibility
+        'slope': slope,
+        'intercept': intercept,
+        'r_squared': r_squared,
+        'p_value': p_value,
+        'decay_ratio': decay_ratio,
+        'f1_falsified': f1_falsified,
+        'is_monotonic_decreasing': is_monotonic_decreasing
+    }
+
+
+def compute_decile_analysis(log_gaps: np.ndarray) -> dict:
+    """
+    Analyze log-gaps using deciles (10 bins).
+    
+    Returns decile analysis with regression.
+    """
+    decile_means = get_decile_means(log_gaps)
+    slope, intercept, r_squared, p_value = regression_analysis(decile_means)
+    
+    return {
+        'bin_means': decile_means,
+        'means': decile_means,
+        'slope': slope,
+        'intercept': intercept,
+        'r_squared': r_squared,
+        'p_value': p_value
+    }
+
+
+def compute_scale_comparison(all_results: dict) -> dict:
+    """
+    Compare results across multiple scales.
+    
+    Args:
+        all_results: Dictionary mapping scale to results
+        
+    Returns:
+        Dictionary with comparison metrics
+    """
+    scales = sorted(all_results.keys())
+    
+    # Check if all scales show negative slope (decay)
+    slopes = [all_results[s]['quintile']['slope'] for s in scales]
+    directional_consistent = all(s < 0 for s in slopes)
+    decay_consistent = directional_consistent
+    
+    # F6: Scale-dependent reversals
+    f6_falsified = not directional_consistent
+    
+    return {
+        'scales': scales,
+        'slopes': slopes,
+        'directional_consistent': directional_consistent,
+        'decay_consistent': decay_consistent,
+        'f6_falsified': f6_falsified
+    }
+
+
+def generate_summary_dataframe(results: dict):
+    """
+    Generate a summary DataFrame from results.
+    
+    Creates a pandas DataFrame with key metrics for easy export.
+    """
+    import pandas as pd
+    
+    # Extract key metrics
+    summary_data = {
+        'Scale': [results['scale']],
+        'Prime_Count': [results['prime_generation']['count']],
+        'Mean_Log_Gap': [results['descriptive']['mean']],
+        'Std_Log_Gap': [results['descriptive']['std']],
+        'Skewness': [results['descriptive']['skewness']],
+        'Kurtosis': [results['descriptive']['kurtosis']],
+        'Quintile_Slope': [results['quintile']['slope']],
+        'Quintile_R2': [results['quintile']['r_squared']],
+        'Quintile_P_Value': [results['quintile']['p_value']],
+        'F1_Falsified': [results['quintile']['f1_falsified']],
+        'Best_Distribution': [results['distribution_comparison']['best_fit']],
+        'Best_KS': [results['distribution_comparison']['best_ks']],
+        'F2_Falsified': [results['distribution_comparison']['f2_falsified']],
+        'F5_Falsified': [results['skewness_kurtosis']['f5_falsified']],
+    }
+    
+    # Add autocorrelation if evaluated
+    if results['autocorrelation']['f4_falsified'] is not None:
+        summary_data['F4_Falsified'] = [results['autocorrelation']['f4_falsified']]
+        summary_data['Autocorr_Status'] = ['evaluated']
+    else:
+        summary_data['F4_Falsified'] = [None]
+        summary_data['Autocorr_Status'] = ['not_evaluated']
+    
+    return pd.DataFrame(summary_data)

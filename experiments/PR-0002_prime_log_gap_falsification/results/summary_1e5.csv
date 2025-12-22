@@ -1,0 +1,2 @@
+Scale,Prime_Count,Mean_Log_Gap,Std_Log_Gap,Skewness,Kurtosis,Quintile_Slope,Quintile_R2,Quintile_P_Value,F1_Falsified,Best_Distribution,Best_KS,F2_Falsified,F5_Falsified,F4_Falsified,Autocorr_Status
+100000,9592,0.001128108464222713,0.010867593870599278,31.55268426428102,1194.869944133935,-0.0009390867248726237,0.5501899937207244,0.15129199591371137,False,lognormal,0.05726513764543684,False,False,False,evaluated

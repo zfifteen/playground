@@ -2,7 +2,9 @@
 
 ## Abstract
 
-This mini white paper presents a rigorous falsification experiment testing whether prime gaps in logarithmic space exhibit damped impulse response behavior analogous to electrical circuits. Using statistical methods on primes up to 10^6 (78,498 primes), we find the hypothesis is not falsified: log-gaps show monotonic decay, log-normal distribution fits superior to normal, and significant short-range autocorrelation. Results support a multiplicative model of prime spacing, with potential implications for number theory analogies to physical systems. The experiment is fully reproducible, with code and data provided.
+This mini white paper presents a rigorous falsification experiment testing whether prime gaps in logarithmic space exhibit damped impulse response behavior analogous to electrical circuits. Using statistical methods on primes up to 10^6 (78,498 primes), we find the hypothesis is not falsified: log-gaps show monotonic decay, log-normal distribution fits superior to normal, and descriptive autocorrelation analysis reveals short-range structure. Results support a multiplicative model of prime spacing, with potential implications for number theory analogies to physical systems. The experiment is fully reproducible, with code and data provided.
+
+**Note (Performance Update)**: The optional Ljung-Box omnibus autocorrelation test is now disabled by default due to O(n²) computational cost at scale. ACF/PACF descriptive statistics remain available. Enable the full test with `--autocorr=ljungbox` when needed.
 
 ## Introduction
 
@@ -34,7 +36,9 @@ Log-gaps were computed as \(\Delta_n = \ln(p_{n+1}) - \ln(p_n)\), transforming a
 
 - **Trend Analysis**: Log-gaps divided into quintiles (5 groups) and deciles (10 groups) by prime order. Linear regression on group means tests for decay (negative slope indicates damping).
 - **Distribution Fitting**: Kolmogorov-Smirnov (KS) tests compare log-gaps to normal, log-normal, exponential, gamma, Weibull, and uniform distributions. Lower KS statistic indicates better fit; log-normal superiority supports multiplicative processes.
-- **Autocorrelation**: Ljung-Box test checks for overall randomness; Autocorrelation Function (ACF) and Partial ACF (PACF) detect memory at lags 1-20.
+- **Autocorrelation**: 
+  - *ACF/PACF*: Autocorrelation Function (ACF) and Partial ACF (PACF) provide descriptive statistics of temporal dependencies at lags 1-20 (computed via FFT for efficiency, O(n log n)).
+  - *Ljung-Box Test (Optional)*: The Ljung-Box omnibus test formally checks for overall randomness. **Note**: Due to O(n²) computational cost, this test is **disabled by default** and must be explicitly enabled via `--autocorr=ljungbox` for large-scale experiments. When disabled, autocorrelation is assessed qualitatively via ACF/PACF plots without formal hypothesis testing.
 - **Falsification Criteria**: Six predefined tests (F1-F6) to reject the hypothesis if patterns are absent or inconsistent.
 
 ### Implementation
@@ -83,6 +87,56 @@ Results align with the circuit analogy: log-gaps as "impulse responses" with dam
 
 ### Implications
 If patterns hold at larger scales, this suggests prime spacing has "filter-like" properties, potentially linking number theory to signal processing. Future work could explore transfer functions or Riemann zeta connections.
+
+## Running the Experiment
+
+### Quick Start
+
+The experiment can be run with default settings (recommended for large scales):
+
+```bash
+python3 run_experiment.py --scales 1e6 --autocorr none
+```
+
+This runs the core statistical analysis while **skipping the computationally expensive Ljung-Box test**, making it suitable for large-scale experiments.
+
+### Configuration Options
+
+The experiment supports several command-line flags for customization:
+
+- `--scales`: Comma-separated list of scales to test (e.g., `1e6,1e7,1e8`)
+- `--autocorr`: Autocorrelation test mode (default: `none`)
+  - `none`: Skip Ljung-Box test (fast, **recommended for scale > 1e7**)
+  - `ljungbox`: Run standard Ljung-Box test (O(n²), slow at scale)
+  - `ljungbox-fixed`: Run with fixed small `max_lag` for bounded cost
+  - `ljungbox-subsample`: Run on subsample (approximate test)
+- `--max-lag`: Maximum lag for Ljung-Box (default: 40)
+- `--subsample-rate`: Subsampling rate for `ljungbox-subsample` mode
+
+### Examples
+
+```bash
+# Default fast run (no autocorrelation test - recommended for large scales):
+python3 run_experiment.py --scales 1e6,1e7 --autocorr none
+
+# Run with Ljung-Box test (slower, O(n²) cost):
+python3 run_experiment.py --scales 1e6 --autocorr ljungbox --max-lag 50
+
+# Run with fixed small lag for bounded cost:
+python3 run_experiment.py --scales 1e6,1e7 --autocorr ljungbox-fixed --max-lag 40
+
+# Run on subsample for approximate test at scale:
+python3 run_experiment.py --scales 1e7 --autocorr ljungbox-subsample --subsample-rate 100000
+```
+
+### Performance Considerations
+
+**Important**: The Ljung-Box autocorrelation test has O(n²) computational complexity and becomes a significant bottleneck for datasets larger than ~10^7 points. For this reason, it is **disabled by default**.
+
+- **With `--autocorr=none` (default)**: The experiment completes in seconds to minutes, scaling approximately linearly with dataset size. ACF/PACF plots are still generated (inexpensive descriptive statistics).
+- **With `--autocorr=ljungbox`**: The experiment may take significantly longer at scale. At n=10^7, the Ljung-Box test can dominate runtime.
+
+**Scientific Note**: When the Ljung-Box test is disabled, autocorrelation claims (hypothesis component #3, falsification criterion F4) are marked as "not evaluated." ACF/PACF visualizations remain available for qualitative assessment, but no formal omnibus test claim is made. To verify autocorrelation hypotheses rigorously, enable the test with `--autocorr=ljungbox` on smaller scales or use subsampling.
 
 ## Conclusion
 
