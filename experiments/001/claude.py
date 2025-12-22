@@ -5,7 +5,7 @@ Using κ(N) = 2(κ(p) + κ(q)) as PRIMARY filter
 """
 
 import numpy as np
-from math import log, sqrt, exp, gcd
+from math import log, sqrt, exp
 import time
 
 PHI = (1 + sqrt(5)) / 2
