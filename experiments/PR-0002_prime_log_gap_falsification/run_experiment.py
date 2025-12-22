@@ -19,7 +19,6 @@ from datetime import datetime
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 import numpy as np
-import pandas as pd
 
 from prime_generator import generate_primes_to_limit, compute_log_gaps, KNOWN_PI_VALUES
 from log_gap_analysis import (
