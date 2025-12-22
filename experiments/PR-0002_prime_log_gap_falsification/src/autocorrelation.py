@@ -101,14 +101,20 @@ def compute_autocorrelation_analysis(data, nlags=20, max_sample_size=500000):
     """
     results = {'nlags': nlags}
     
-    # For very large datasets, use a sample to improve performance
-    # while maintaining statistical validity
+    # For very large datasets, use systematic sampling to improve performance
+    # while maintaining statistical properties for ordered sequences like prime gaps.
+    # Systematic sampling preserves the sequential structure better than random sampling.
     if len(data) > max_sample_size:
+        # Calculate step size for systematic sampling
+        step = len(data) // max_sample_size
+        # Use systematic sampling: start from random offset, then take every nth element
         np.random.seed(42)  # Reproducibility
-        indices = np.sort(np.random.choice(len(data), max_sample_size, replace=False))
+        offset = np.random.randint(0, step) if step > 1 else 0
+        indices = np.arange(offset, len(data), step)[:max_sample_size]
         data_sample = data[indices]
         results['sampled'] = True
-        results['sample_size'] = max_sample_size
+        results['sample_size'] = len(data_sample)
+        results['sample_method'] = 'systematic'
     else:
         data_sample = data
         results['sampled'] = False
