@@ -4,7 +4,7 @@ import sys
 
 sys.path.append("src")
 
-from prime_generator import generate_primes_up_to
+from prime_generator import PrimeGenerator
 from log_gap_analysis import analyze_log_gaps
 from distribution_tests import run_distribution_tests, find_best_fit
 from autocorrelation import autocorrelation_analysis
@@ -19,7 +19,7 @@ def run_full_analysis(limit: int, save_data: bool = True):
 
     # Generate primes
     print("Generating primes...")
-    primes = generate_primes_up_to(limit)
+    primes = PrimeGenerator.generate_primes_array(limit)
     count = len(primes)
     print(f"Generated {count} primes up to {limit}")
 
