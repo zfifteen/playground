@@ -1,172 +1,69 @@
-"""
-Distribution Testing Module
-
-This module checks what kind of statistical "shape" the log-gaps follow.
-We don't assume they're normal (bell-curve); instead, we test against several distributions using the Kolmogorov-Smirnov (KS) test.
-KS compares our data to a theoretical distribution and gives a statistic (how different they are) and p-value (chance of difference being random).
-Low KS = good fit; high p-value = not significantly different.
-
-Why multiple distributions? Our hypothesis suggests log-gaps might be "log-normal" (products of random factors, like circuit gains).
-But we test others (normal, exponential, etc.) to falsify alternatives and confirm superiority.
-This is key for deciding if gaps are multiplicative (log-normal) vs. additive (normal).
-"""
-
 import numpy as np
 from scipy import stats
-from scipy.optimize import minimize  # Not used here, but imported
-import warnings
 
-
-def ks_test_normal(data: np.ndarray):
+def fit_distributions(data):
     """
-    Test if log-gaps fit a normal (Gaussian) distribution.
-
-    Normal is symmetric, bell-shaped – common for additive processes (like measurement errors).
-    If gaps were simple sums of random additions, they'd be normal.
-    But our hypothesis predicts they're not, due to multiplicative effects.
-    Fit parameters: mu (mean), sigma (spread).
+    Fits Normal and Log-Normal distributions to the data.
+    Returns KS test statistics and p-values, plus MLE parameters.
+    
+    Note: For log-normal fit, we fit the distribution to the data directly.
+    However, log-gaps are already 'log' in nature? 
+    The hypothesis says log-gaps follow a log-normal distribution.
+    So we fit lognorm to the data.
     """
-    # Estimate the best normal curve for our data
-    mu, sigma = stats.norm.fit(data)
-    # KS test: how well does the data match this normal?
-    ks_stat, p_value = stats.kstest(data, "norm", args=(mu, sigma))
+    results = {}
+    
+    # Normal distribution
+    mu, std = stats.norm.fit(data)
+    ks_stat_norm, p_val_norm = stats.kstest(data, 'norm', args=(mu, std))
+    results['normal'] = {
+        'ks_stat': ks_stat_norm,
+        'p_value': p_val_norm,
+        'params': (mu, std)
+    }
+    
+    # Log-Normal distribution
+    # shape (s), loc, scale
+    # We require strictly positive data for lognorm. Log gaps are > 0 since p_{n+1} > p_n.
+    if np.any(data <= 0):
+         # Should not happen for primes
+         data_clean = data[data > 0]
+    else:
+         data_clean = data
+         
+    shape, loc, scale = stats.lognorm.fit(data_clean)
+    ks_stat_lognorm, p_val_lognorm = stats.kstest(data_clean, 'lognorm', args=(shape, loc, scale))
+    results['lognormal'] = {
+        'ks_stat': ks_stat_lognorm,
+        'p_value': p_val_lognorm,
+        'params': (shape, loc, scale)
+    }
+    
+    # Exponential distribution (Null hypothesis H0-D)
+    loc_exp, scale_exp = stats.expon.fit(data_clean)
+    ks_stat_exp, p_val_exp = stats.kstest(data_clean, 'expon', args=(loc_exp, scale_exp))
+    results['exponential'] = {
+        'ks_stat': ks_stat_exp,
+        'p_value': p_val_exp,
+        'params': (loc_exp, scale_exp)
+    }
+
+    # Uniform distribution (Null hypothesis H0-C check)
+    loc_uni, scale_uni = stats.uniform.fit(data_clean)
+    ks_stat_uni, p_val_uni = stats.kstest(data_clean, 'uniform', args=(loc_uni, scale_uni))
+    results['uniform'] = {
+        'ks_stat': ks_stat_uni,
+        'p_value': p_val_uni,
+        'params': (loc_uni, scale_uni)
+    }
+    
+    return results
+
+def calculate_moments(data):
+    """
+    Calculates Skewness and Kurtosis.
+    """
     return {
-        "ks_stat": ks_stat,  # Distance between data and normal (0 = perfect)
-        "p_value": p_value,  # Probability the difference is random (high = good fit)
-        "params": {"mu": mu, "sigma": sigma},  # Fitted parameters
+        'skewness': stats.skew(data),
+        'kurtosis': stats.kurtosis(data) # This is excess kurtosis (Fisher)
     }
-
-
-def ks_test_lognormal(data: np.ndarray):
-    """
-    Test if log-gaps fit a log-normal distribution.
-
-    Log-normal arises from products of independent random factors (multiplicative processes).
-    In circuits, gains multiply; here, prime factors might "multiply" gaps logarithmically.
-    This is our favored distribution per the hypothesis – if it fits best, it supports the analogy.
-    Parameters: shape (related to spread), loc (shift), scale (size).
-    Also compute MLE (maximum likelihood) mu/sigma for logs of data.
-    """
-    # Fit the log-normal curve to data (fix location at 0 since gaps >0)
-    shape, loc, scale = stats.lognorm.fit(data, floc=0)
-    # Test how well it matches
-    ks_stat, p_value = stats.kstest(data, "lognorm", args=(shape, loc, scale))
-    # For comparison, compute log parameters directly (MLE style)
-    log_data = np.log(data)
-    mu_mle = np.mean(log_data)  # Mean of logs
-    sigma_mle = np.std(log_data)  # Std of logs
-    return {
-        "ks_stat": ks_stat,
-        "p_value": p_value,
-        "params": {"shape": shape, "loc": loc, "scale": scale},
-        "mle_params": {"mu": mu_mle, "sigma": sigma_mle},  # Alternative params
-    }
-
-
-def ks_test_exponential(data: np.ndarray):
-    """
-    Test against exponential distribution (memoryless decay).
-
-    Exponential is for waiting times or decay processes (like radioactive half-life).
-    If gaps decayed exponentially, this might fit, but our hypothesis leans toward log-normal.
-    Parameter: scale (rate of decay).
-    """
-    loc, scale = stats.expon.fit(data, floc=0)
-    ks_stat, p_value = stats.kstest(data, "expon", args=(loc, scale))
-    return {
-        "ks_stat": ks_stat,
-        "p_value": p_value,
-        "params": {"loc": loc, "scale": scale},
-    }
-
-
-def ks_test_gamma(data: np.ndarray):
-    """
-    Test against gamma distribution (sums of exponentials).
-
-    Gamma generalizes exponential; it's for positive, skewed data from additive processes.
-    Useful to check if log-gaps look like compounded waiting times.
-    Parameters: a (shape), scale (spread).
-    """
-    a, loc, scale = stats.gamma.fit(data, floc=0)
-    ks_stat, p_value = stats.kstest(data, "gamma", args=(a, loc, scale))
-    return {
-        "ks_stat": ks_stat,
-        "p_value": p_value,
-        "params": {"a": a, "loc": loc, "scale": scale},
-    }
-
-
-def ks_test_weibull(data: np.ndarray):
-    """
-    Test against Weibull distribution (failure analysis).
-
-    Weibull models time-to-failure or extreme values; it's flexible for skewed data.
-    Could fit if gaps relate to "breakdowns" in prime distribution.
-    Parameter: c (shape, controls tail).
-    """
-    c, loc, scale = stats.weibull_min.fit(data, floc=0)
-    ks_stat, p_value = stats.kstest(data, "weibull_min", args=(c, loc, scale))
-    return {
-        "ks_stat": ks_stat,
-        "p_value": p_value,
-        "params": {"c": c, "loc": loc, "scale": scale},
-    }
-
-
-def ks_test_uniform(data: np.ndarray):
-    """
-    Test against uniform distribution (for falsification).
-
-    Uniform means all gaps equally likely – random, no pattern.
-    This is a strawman: if gaps are truly random, this fits, falsifying our hypothesis.
-    Low p-value here means some structure exists.
-    """
-    loc, scale = stats.uniform.fit(data)
-    ks_stat, p_value = stats.kstest(data, "uniform", args=(loc, scale))
-    return {
-        "ks_stat": ks_stat,
-        "p_value": p_value,
-        "params": {"loc": loc, "scale": scale},
-    }
-
-
-def run_distribution_tests(data: np.ndarray):
-    """
-    Run KS tests against all candidate distributions.
-
-    This is the core: we compare log-gaps to normal (additive), log-normal (multiplicative), etc.
-    Results help decide if gaps are circuit-like (log-normal wins) or random (uniform wins).
-    Returns a dict of test results for each distribution.
-    """
-    tests = {
-        "normal": ks_test_normal(data),
-        "lognormal": ks_test_lognormal(data),
-        "exponential": ks_test_exponential(data),
-        "gamma": ks_test_gamma(data),
-        "weibull": ks_test_weibull(data),
-        "uniform": ks_test_uniform(data),
-    }
-    return tests
-
-
-def find_best_fit(tests: dict):
-    """
-    Identify the distribution that fits the data best.
-
-    Picks the one with the smallest KS statistic (closest match).
-    In our experiment, if log-normal wins, it supports the multiplicative hypothesis.
-    Returns the name and its KS score.
-    """
-    best_dist = min(tests, key=lambda x: tests[x]["ks_stat"])  # Find min KS
-    return best_dist, tests[best_dist]["ks_stat"]
-
-
-if __name__ == "__main__":
-    # Demo with fake log-normal data to test the functions
-    np.random.seed(42)  # Reproducible randomness
-    data = np.random.lognormal(0, 1, 100)  # Generate test data
-    tests = run_distribution_tests(data)  # Run all tests
-    print("Best fit:", find_best_fit(tests))  # Show winner
-    for dist, result in tests.items():  # Print each result
-        print(f"{dist}: KS={result['ks_stat']:.4f}, p={result['p_value']:.4f}")

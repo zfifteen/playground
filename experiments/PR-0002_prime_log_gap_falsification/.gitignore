@@ -1,0 +1,4 @@
+# Ignore large data files
+*.npy
+__pycache__/
+*.pyc
