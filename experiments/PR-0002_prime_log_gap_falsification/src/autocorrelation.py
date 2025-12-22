@@ -1,252 +1,106 @@
-#!/usr/bin/env python3
 """
-Autocorrelation Analysis
+Autocorrelation Analysis Module
 
-ACF, PACF, and Ljung-Box tests for log-gap autocorrelation structure.
+This module checks if log-gaps have "memory" – do past gaps influence future ones?
+In circuits, components like capacitors store charge, creating echoes (autocorrelation).
+If prime gaps behave similarly, it supports the damped system analogy.
 
-Author: GitHub Copilot
-Date: December 2025
+We use:
+- Ljung-Box test: Formal check for overall correlation (like asking if data is truly random).
+- ACF (Autocorrelation Function): Measures direct correlations at different lags (delays).
+- PACF (Partial Autocorrelation): Isolates direct vs. indirect influences.
+
+Results help falsify: if gaps are uncorrelated (white noise), the hypothesis fails.
 """
 
 import numpy as np
-from scipy import stats
-
-# Try to import statsmodels, but provide fallback if not available
-try:
-    from statsmodels.stats.diagnostic import acorr_ljungbox
-    from statsmodels.tsa.stattools import acf, pacf
-    STATSMODELS_AVAILABLE = True
-except ImportError:
-    STATSMODELS_AVAILABLE = False
+from statsmodels.stats.diagnostic import acorr_ljungbox  # Ljung-Box test
+from statsmodels.tsa.stattools import acf, pacf  # ACF and PACF
+import warnings
 
 
-def compute_acf_manual(data, nlags=20):
+def ljung_box_test(data: np.ndarray, lags: int = 20):
     """
-    Manual ACF computation (fallback if statsmodels not available).
-    
-    Args:
-        data: numpy array
-        nlags: number of lags to compute
-        
-    Returns:
-        numpy array of ACF values for lags 0 to nlags
+    Ljung-Box test: Check if the sequence is uncorrelated (random) up to given lags.
+
+    Imagine testing if yesterday's weather predicts tomorrow's – but for gaps.
+    It sums squared autocorrelations and compares to chi-squared distribution.
+    High p-value (>0.05) means "no correlation detected" – data looks random.
+    In our case, if p-values are low, gaps have memory, like a circuit's response.
     """
-    n = len(data)
-    mean = np.mean(data)
-    var = np.var(data)
-    
-    if var == 0:
-        return np.zeros(nlags + 1)
-    
-    acf_vals = np.zeros(nlags + 1)
-    acf_vals[0] = 1.0
-    
-    for lag in range(1, nlags + 1):
-        if lag < n:
-            cov = np.mean((data[:-lag] - mean) * (data[lag:] - mean))
-            acf_vals[lag] = cov / var
-    
-    return acf_vals
+    lb_df = acorr_ljungbox(data, lags=lags, return_df=True)  # Compute test stats
+    results = {}
+    for lag in range(1, lags + 1):
+        lb_stat = lb_df.loc[lag, "lb_stat"]  # Test statistic for this lag
+        p_value = lb_df.loc[lag, "lb_pvalue"]  # Probability of false alarm
+        results[f"lag_{lag}"] = {"lb_stat": lb_stat, "p_value": p_value}
+    # Check if all lags show no correlation (p > 0.05)
+    all_uncorrelated = all(res["p_value"] > 0.05 for res in results.values())
+    return results, all_uncorrelated  # Dict of results, boolean summary
 
 
-def compute_ljungbox_manual(data, nlags=20):
+def compute_acf(data: np.ndarray, nlags: int = 20):
     """
-    Manual Ljung-Box test computation (fallback).
-    
-    Q = n(n+2) * sum_{k=1}^{h} (rho_k^2 / (n-k))
-    
-    Under H0, Q ~ chi-squared(h)
-    
-    Args:
-        data: numpy array
-        nlags: number of lags to test
-        
-    Returns:
-        Dictionary with Q statistic and p-value for each lag
+    Autocorrelation Function (ACF): How much does a gap correlate with itself at delays?
+
+    Like: Is gap N related to gap N-1, N-2, etc.?
+    Values near 1.0 mean strong positive correlation; near -1.0 negative; 0 none.
+    Uses FFT for speed on large data. Suppresses warnings for numerical issues.
     """
-    n = len(data)
-    acf_vals = compute_acf_manual(data, nlags)
-    
-    results = []
-    for h in range(1, nlags + 1):
-        Q = 0
-        for k in range(1, h + 1):
-            Q += (acf_vals[k] ** 2) / (n - k)
-        Q *= n * (n + 2)
-        
-        p_value = 1 - stats.chi2.cdf(Q, h)
-        results.append({
-            'lag': h,
-            'Q': Q,
-            'p_value': p_value
-        })
-    
-    return results
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # Ignore minor warnings
+        acf_values = acf(data, nlags=nlags, fft=True)  # Compute correlations
+    return acf_values  # Array: lag 0 (always 1.0), lag 1, etc.
 
 
-def compute_autocorrelation_analysis(data, nlags=20, max_sample_size=500000):
+def compute_pacf(data: np.ndarray, nlags: int = 20):
     """
-    Compute ACF, PACF, and Ljung-Box tests.
-    
-    Tests H-MAIN-C: Log-gap autocorrelation exhibits short-range structure.
-    
-    Args:
-        data: numpy array of log-gaps
-        nlags: number of lags to analyze
-        max_sample_size: maximum sample size for performance (large datasets will be sampled)
-        
-    Returns:
-        Dictionary with ACF, PACF, and Ljung-Box results
+    Partial Autocorrelation Function (PACF): Direct correlation at each lag, removing intermediates.
+
+    ACF includes indirect effects (e.g., lag 2 via lag 1), but PACF isolates direct ones.
+    Helps identify AR (autoregressive) patterns, like AR(1) for simple memory.
+    In circuits, this might reveal the "filter order" of the prime gap system.
     """
-    results = {'nlags': nlags}
-    
-    # For very large datasets, use systematic sampling to improve performance
-    # while maintaining statistical properties for ordered sequences like prime gaps.
-    # Systematic sampling preserves the sequential structure better than random sampling.
-    if len(data) > max_sample_size:
-        # Calculate step size for systematic sampling
-        step = len(data) // max_sample_size
-        # Use systematic sampling: start from random offset, then take every nth element
-        np.random.seed(42)  # Reproducibility
-        offset = np.random.randint(0, step) if step > 1 else 0
-        indices = np.arange(offset, len(data), step)[:max_sample_size]
-        data_sample = data[indices]
-        results['sampled'] = True
-        results['sample_size'] = len(data_sample)
-        results['sample_method'] = 'systematic'
-    else:
-        data_sample = data
-        results['sampled'] = False
-        results['sample_size'] = len(data)
-    
-    if STATSMODELS_AVAILABLE:
-        # Use statsmodels
-        try:
-            acf_vals = acf(data_sample, nlags=nlags, fft=True)
-            results['acf'] = acf_vals
-        except Exception:
-            acf_vals = compute_acf_manual(data_sample, nlags)
-            results['acf'] = acf_vals
-        
-        try:
-            # PACF might fail for short series
-            pacf_vals = pacf(data_sample, nlags=min(nlags, len(data_sample) // 2 - 1))
-            results['pacf'] = pacf_vals
-        except Exception:
-            results['pacf'] = None
-        
-        try:
-            lb_result = acorr_ljungbox(data_sample, lags=nlags, return_df=True)
-            results['ljungbox'] = {
-                'Q_stats': lb_result['lb_stat'].values,
-                'p_values': lb_result['lb_pvalue'].values,
-                'lags': lb_result.index.values
-            }
-        except Exception:
-            lb_manual = compute_ljungbox_manual(data_sample, nlags)
-            results['ljungbox'] = {
-                'Q_stats': [r['Q'] for r in lb_manual],
-                'p_values': [r['p_value'] for r in lb_manual],
-                'lags': [r['lag'] for r in lb_manual]
-            }
-    else:
-        # Use manual implementations
-        results['acf'] = compute_acf_manual(data_sample, nlags)
-        results['pacf'] = None  # PACF is complex to implement manually
-        
-        lb_manual = compute_ljungbox_manual(data_sample, nlags)
-        results['ljungbox'] = {
-            'Q_stats': [r['Q'] for r in lb_manual],
-            'p_values': [r['p_value'] for r in lb_manual],
-            'lags': [r['lag'] for r in lb_manual]
-        }
-    
-    # Analysis
-    acf_vals = results['acf']
-    lb_pvalues = np.array(results['ljungbox']['p_values'])
-    
-    # Confidence bounds for ACF (approximate)
-    n = len(data_sample)
-    conf_bound = 1.96 / np.sqrt(n)
-    
-    # Check for significant ACF at low lags
-    significant_lags = []
-    for lag in range(1, min(len(acf_vals), nlags + 1)):
-        if abs(acf_vals[lag]) > conf_bound:
-            significant_lags.append(lag)
-    
-    results['conf_bound'] = conf_bound
-    results['significant_lags'] = significant_lags
-    results['has_short_range_structure'] = len(significant_lags) > 0
-    
-    # Ljung-Box interpretation
-    # F4: All p-values > 0.05 means white noise
-    all_p_above_threshold = np.all(lb_pvalues > 0.05)
-    any_p_below_threshold = np.any(lb_pvalues < 0.01)
-    
-    results['ljungbox_all_p_above_005'] = all_p_above_threshold
-    results['ljungbox_any_p_below_001'] = any_p_below_threshold
-    
-    # F4 falsification: autocorrelation is flat at all lags
-    results['f4_falsified'] = all_p_above_threshold
-    
-    return results
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        pacf_values = pacf(data, nlags=nlags)  # Compute partials
+    return pacf_values
 
 
-def compute_windowed_autocorrelation(data, window_size=10000, nlags=20):
+def autocorrelation_analysis(data: np.ndarray, lags: int = 20):
     """
-    Compute ACF in non-overlapping windows to check for consistency.
-    
-    Args:
-        data: numpy array of log-gaps
-        window_size: size of each window
-        nlags: number of lags
-        
-    Returns:
-        List of ACF results for each window
+    Complete analysis of temporal dependencies in log-gaps.
+
+    Runs Ljung-Box for overall randomness, ACF for direct correlations, PACF for structure.
+    Identifies lags with strong correlations (threshold |corr| > 0.1).
+    If significant lags exist, gaps have memory – supporting circuit-like behavior.
+    Returns dict for plotting and falsification checks.
     """
-    n = len(data)
-    n_windows = n // window_size
-    
-    window_results = []
-    for i in range(n_windows):
-        start = i * window_size
-        end = start + window_size
-        window_data = data[start:end]
-        
-        acf_vals = compute_acf_manual(window_data, nlags)
-        window_results.append({
-            'window': i + 1,
-            'start': start,
-            'end': end,
-            'acf': acf_vals
-        })
-    
-    return window_results
+    lb_results, all_uncorrelated = ljung_box_test(data, lags)  # Test for randomness
+    acf_values = compute_acf(data, lags)  # Correlation strengths
+    pacf_values = compute_pacf(data, lags)  # Direct influences
+
+    # Find lags with notable correlations (above rough threshold)
+    significant_acf = [i for i in range(1, len(acf_values)) if abs(acf_values[i]) > 0.1]
+    significant_pacf = [
+        i for i in range(1, len(pacf_values)) if abs(pacf_values[i]) > 0.1
+    ]
+
+    analysis = {
+        "ljung_box": lb_results,  # Detailed test results
+        "all_uncorrelated": all_uncorrelated,  # Boolean: is it white noise?
+        "acf": acf_values,  # Correlation array
+        "pacf": pacf_values,  # Partial correlation array
+        "significant_acf_lags": significant_acf,  # Lags with strong ACF
+        "significant_pacf_lags": significant_pacf,  # Lags with strong PACF
+    }
+    return analysis
 
 
 if __name__ == "__main__":
-    import sys
-    sys.path.insert(0, '.')
-    from prime_generator import generate_primes_to_limit, compute_log_gaps
-    
-    print("Testing autocorrelation analysis...")
-    print(f"statsmodels available: {STATSMODELS_AVAILABLE}")
-    
-    primes = generate_primes_to_limit(10**5)
-    data = compute_log_gaps(primes)
-    log_gaps = data['log_gaps']
-    
-    # Autocorrelation analysis
-    acf_results = compute_autocorrelation_analysis(log_gaps, nlags=20)
-    
-    print(f"\nACF values (lags 1-10):")
-    print(f"  {acf_results['acf'][1:11]}")
-    print(f"\nConfidence bound: ±{acf_results['conf_bound']:.4f}")
-    print(f"Significant lags: {acf_results['significant_lags']}")
-    print(f"Has short-range structure: {acf_results['has_short_range_structure']}")
-    
-    print(f"\nLjung-Box p-values (lags 1-10):")
-    print(f"  {acf_results['ljungbox']['p_values'][:10]}")
-    print(f"All p > 0.05 (white noise): {acf_results['ljungbox_all_p_above_005']}")
-    print(f"F4 falsified: {acf_results['f4_falsified']}")
+    # Test with random (uncorrelated) data – should show no memory
+    np.random.seed(42)  # Reproducible
+    data = np.random.randn(100)  # Normal random data (no autocorrelation)
+    analysis = autocorrelation_analysis(data)
+    print("All uncorrelated:", analysis["all_uncorrelated"])  # Should be True
+    print("Significant ACF lags:", analysis["significant_acf_lags"])  # Should be empty

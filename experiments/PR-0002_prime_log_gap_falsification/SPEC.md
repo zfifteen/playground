@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 
-This document specifies an experiment designed to rigorously test and potentially falsify the hypothesis that prime number gaps in logarithmic space exhibit circuit-like damped impulse response behavior. The experiment extends preliminary findings (9,592 primes to 10⁵) to larger scales (10⁸+ primes) with formal statistical validation.
+This document specifies an experiment designed to rigorously test and potentially falsify the hypothesis that prime number gaps in logarithmic space exhibit circuit-like damped impulse response behavior. The experiment extends preliminary findings (9,592 primes to 10âµ) to larger scales (10â¸+ primes) with formal statistical validation.
 
 ---
 
@@ -17,7 +17,7 @@ This document specifies an experiment designed to rigorously test and potentiall
 
 ### 2.1 Primary Hypothesis (H-MAIN)
 
-**Statement:** Prime gaps in log-space, defined as Δₙ = ln(pₙ₊₁) - ln(pₙ) = ln(pₙ₊₁/pₙ), exhibit statistical properties consistent with a multiplicative damped system, specifically:
+**Statement:** Prime gaps in log-space, defined as Î”â‚™ = ln(pâ‚™â‚Šâ‚) - ln(pâ‚™) = ln(pâ‚™â‚Šâ‚/pâ‚™), exhibit statistical properties consistent with a multiplicative damped system, specifically:
 
 1. **H-MAIN-A (Decay):** Mean log-gap decreases monotonically as primes increase
 2. **H-MAIN-B (Distribution):** Log-gaps follow a log-normal or related heavy-tailed multiplicative distribution
@@ -29,7 +29,7 @@ This document specifies an experiment designed to rigorously test and potentiall
 |----|-----------------|------------------------|
 | H0-A | Log-gap mean is constant or increasing | Quintile means show no decrease or increase with p |
 | H0-B | Log-gaps are normally distributed | KS test p-value > 0.05 for normal fit, AND normal KS < log-normal KS |
-| H0-C | Log-gaps are uncorrelated (white noise) | Ljung-Box test p-value > 0.05 at all lags ≤ 20 |
+| H0-C | Log-gaps are uncorrelated (white noise) | Ljung-Box test p-value > 0.05 at all lags â‰¤ 20 |
 | H0-D | Log-gaps follow simple exponential decay | Exponential KS statistic < log-normal KS statistic |
 
 ### 2.3 Connection to Circuit Analogy
@@ -39,7 +39,7 @@ The hypothesis derives from the mapping:
 | Electrical Domain | Number-Theoretic Domain |
 |-------------------|------------------------|
 | Voltage v | Logarithm ln(n) |
-| Current i | Log-ratio ln(pₙ₊₁/pₙ) |
+| Current i | Log-ratio ln(pâ‚™â‚Šâ‚/pâ‚™) |
 | Impulse response | Prime gap distribution |
 | Damping coefficient | Log-gap decay rate |
 | RC time constant | Characteristic scale of gap correlation |
@@ -50,7 +50,7 @@ The Gist "Proof and Analysis of Relativistic Doppler Shift Bounds" establishes:
 
 $$\frac{\delta}{1+\delta} < \beta < \frac{\delta}{1-\delta} \quad (0 < \delta < 1)$$
 
-via the rapidity identity artanh(β) = ln(1+δ). This logarithmic compression parallels the treatment of integers as "potentials" in the circuit analogy, where logarithms bound multiplicative growth analogously to how β < 1 bounds relativistic velocity.
+via the rapidity identity artanh(Î²) = ln(1+Î´). This logarithmic compression parallels the treatment of integers as "potentials" in the circuit analogy, where logarithms bound multiplicative growth analogously to how Î² < 1 bounds relativistic velocity.
 
 ---
 
@@ -63,22 +63,22 @@ via the rapidity identity artanh(β) = ln(1+δ). This logarithmic compression pa
 | Parameter | Value | Justification |
 |-----------|-------|---------------|
 | Minimum prime | 2 | Include full range |
-| Maximum prime | 10⁸ (extendable to 10⁹) | Sufficient for statistical power |
-| Expected count | ~5.76 × 10⁶ primes | From π(10⁸) ≈ 5,761,455 |
+| Maximum prime | 10â¸ (extendable to 10â¹) | Sufficient for statistical power |
+| Expected count | ~5.76 Ã— 10â¶ primes | From Ï€(10â¸) â‰ˆ 5,761,455 |
 | Generation method | Segmented Sieve of Eratosthenes | Memory-efficient for large ranges |
-| Validation | Cross-check count against known π(x) values | Ensure no computational errors |
+| Validation | Cross-check count against known Ï€(x) values | Ensure no computational errors |
 
 #### 3.1.2 Known Validation Points
 
-| x | π(x) | Source |
+| x | Ï€(x) | Source |
 |---|------|--------|
-| 10⁶ | 78,498 | Prime counting function tables |
-| 10⁷ | 664,579 | Prime counting function tables |
-| 10⁸ | 5,761,455 | Prime counting function tables |
+| 10â¶ | 78,498 | Prime counting function tables |
+| 10â· | 664,579 | Prime counting function tables |
+| 10â¸ | 5,761,455 | Prime counting function tables |
 
 ### 3.2 Derived Quantities
 
-For each consecutive prime pair (pₙ, pₙ₊₁):
+For each consecutive prime pair (pâ‚™, pâ‚™â‚Šâ‚):
 
 ```
 log_gap[n] = ln(p[n+1]) - ln(p[n]) = ln(p[n+1] / p[n])
@@ -95,7 +95,7 @@ log_prime[n] = ln(p[n])
 | T1 | Quintile Mean Regression | H-MAIN-A | Linear regression of quintile means vs quintile index |
 | T2 | Decile Mean Regression | H-MAIN-A | Finer granularity check (10 bins) |
 | T3 | KS Test Battery | H-MAIN-B | Fit and compare: normal, log-normal, exponential, gamma, Weibull |
-| T4 | Maximum Likelihood Estimation | H-MAIN-B | MLE for log-normal parameters (μ, σ) |
+| T4 | Maximum Likelihood Estimation | H-MAIN-B | MLE for log-normal parameters (Î¼, Ïƒ) |
 | T5 | Ljung-Box Test | H-MAIN-C | Autocorrelation significance at lags 1-20 |
 | T6 | ACF/PACF Analysis | H-MAIN-C | Partial autocorrelation to identify AR structure |
 | T7 | Skewness/Kurtosis | H-MAIN-B | Compare to theoretical values for candidate distributions |
@@ -107,26 +107,26 @@ log_prime[n] = ln(p[n])
 |--------|-----------|----------------|
 | p-value for rejection | < 0.01 | Conservative threshold to avoid false positives |
 | KS statistic comparison | Ratio > 1.5 | One distribution fits substantially better |
-| Regression R² | > 0.90 | Strong linear relationship in decay |
+| Regression RÂ² | > 0.90 | Strong linear relationship in decay |
 | Slope significance | p < 0.001 | Decay slope is significantly negative |
 
 ### 3.4 Falsification Criteria
 
 **The hypothesis is FALSIFIED if ANY of the following occur:**
 
-1. **F1:** Quintile/decile means show non-decreasing trend (T1, T2 regression slope ≥ 0 with p > 0.05)
+1. **F1:** Quintile/decile means show non-decreasing trend (T1, T2 regression slope â‰¥ 0 with p > 0.05)
 2. **F2:** Normal distribution fits log-gaps better than log-normal (T3: KS_normal < KS_lognormal)
 3. **F3:** Log-gaps are indistinguishable from uniform random (T3: uniform KS p-value > 0.05)
 4. **F4:** Autocorrelation is flat at all lags (T5: Ljung-Box p > 0.05 for all lags)
 5. **F5:** Skewness and kurtosis are consistent with normal distribution (T7: |skewness| < 0.5, |excess kurtosis| < 1)
-6. **F6:** Results at 10⁸ contradict results at 10⁵ (directional inconsistency)
+6. **F6:** Results at 10â¸ contradict results at 10âµ (directional inconsistency)
 
 **The hypothesis is SUPPORTED (not proven) if:**
 
 1. All falsification criteria fail to trigger
 2. Log-normal or heavy-tailed fit is statistically superior
 3. Decay trend is monotonic and statistically significant
-4. Results are consistent across scales (10⁵ → 10⁶ → 10⁷ → 10⁸)
+4. Results are consistent across scales (10âµ â†’ 10â¶ â†’ 10â· â†’ 10â¸)
 
 ---
 
@@ -136,30 +136,30 @@ log_prime[n] = ln(p[n])
 
 ```
 experiments/PR-0002_prime_log_gap_falsification/
-├── SPEC.md                    # This document
-├── FINDINGS.md                # Results and conclusions
-├── src/
-│   ├── prime_generator.py     # Segmented sieve implementation
-│   ├── log_gap_analysis.py    # Core statistical analysis
-│   ├── distribution_tests.py  # KS tests and MLE fitting
-│   ├── autocorrelation.py     # ACF/PACF and Ljung-Box
-│   └── visualization.py       # Q-Q plots, histograms, trend plots
-├── data/
-│   ├── primes_1e6.npy         # Cached prime arrays
-│   ├── primes_1e7.npy
-│   ├── primes_1e8.npy
-│   └── log_gaps_*.csv         # Computed log-gaps
-├── results/
-│   ├── quintile_analysis.csv
-│   ├── distribution_fits.csv
-│   ├── autocorrelation.csv
-│   └── figures/
-│       ├── log_gap_histogram.png
-│       ├── qq_plot_lognormal.png
-│       ├── decay_trend.png
-│       └── acf_pacf.png
-└── tests/
-    └── test_prime_generator.py # Validation against known π(x)
+â”œâ”€â”€ SPEC.md                    # This document
+â”œâ”€â”€ FINDINGS.md                # Results and conclusions
+â”œâ”€â”€ src/
+â”‚   â”œâ”€â”€ prime_generator.py     # Segmented sieve implementation
+â”‚   â”œâ”€â”€ log_gap_analysis.py    # Core statistical analysis
+â”‚   â”œâ”€â”€ distribution_tests.py  # KS tests and MLE fitting
+â”‚   â”œâ”€â”€ autocorrelation.py     # ACF/PACF and Ljung-Box
+â”‚   â””â”€â”€ visualization.py       # Q-Q plots, histograms, trend plots
+â”œâ”€â”€ data/
+â”‚   â”œâ”€â”€ primes_1e6.npy         # Cached prime arrays
+â”‚   â”œâ”€â”€ primes_1e7.npy
+â”‚   â”œâ”€â”€ primes_1e8.npy
+â”‚   â””â”€â”€ log_gaps_*.csv         # Computed log-gaps
+â”œâ”€â”€ results/
+â”‚   â”œâ”€â”€ quintile_analysis.csv
+â”‚   â”œâ”€â”€ distribution_fits.csv
+â”‚   â”œâ”€â”€ autocorrelation.csv
+â”‚   â””â”€â”€ figures/
+â”‚       â”œâ”€â”€ log_gap_histogram.png
+â”‚       â”œâ”€â”€ qq_plot_lognormal.png
+â”‚       â”œâ”€â”€ decay_trend.png
+â”‚       â””â”€â”€ acf_pacf.png
+â””â”€â”€ tests/
+    â””â”€â”€ test_prime_generator.py # Validation against known Ï€(x)
 ```
 
 ### 4.2 Dependencies
@@ -177,10 +177,10 @@ sympy >= 1.9  # For symbolic verification
 
 | Scale | Estimated Primes | Memory (primes) | Memory (gaps) | Time (est.) |
 |-------|------------------|-----------------|---------------|-------------|
-| 10⁶ | 78,498 | ~0.6 MB | ~0.6 MB | < 1 sec |
-| 10⁷ | 664,579 | ~5 MB | ~5 MB | ~5 sec |
-| 10⁸ | 5,761,455 | ~46 MB | ~46 MB | ~60 sec |
-| 10⁹ | 50,847,534 | ~407 MB | ~407 MB | ~15 min |
+| 10â¶ | 78,498 | ~0.6 MB | ~0.6 MB | < 1 sec |
+| 10â· | 664,579 | ~5 MB | ~5 MB | ~5 sec |
+| 10â¸ | 5,761,455 | ~46 MB | ~46 MB | ~60 sec |
+| 10â¹ | 50,847,534 | ~407 MB | ~407 MB | ~15 min |
 
 ### 4.4 Algorithm: Segmented Sieve
 
@@ -201,28 +201,28 @@ def segmented_sieve(limit, segment_size=10**6):
 
 ## 5. Analysis Protocol
 
-### 5.1 Phase 1: Validation (Scale 10⁶)
+### 5.1 Phase 1: Validation (Scale 10â¶)
 
-1. Generate primes to 10⁶
-2. Verify count matches π(10⁶) = 78,498
+1. Generate primes to 10â¶
+2. Verify count matches Ï€(10â¶) = 78,498
 3. Compute log-gaps
 4. Run full test suite (T1-T8)
-5. Compare to preliminary results (10⁵ scale)
+5. Compare to preliminary results (10âµ scale)
 6. Document any discrepancies
 
-### 5.2 Phase 2: Extension (Scale 10⁷)
+### 5.2 Phase 2: Extension (Scale 10â·)
 
-1. Generate primes to 10⁷
-2. Verify count matches π(10⁷) = 664,579
+1. Generate primes to 10â·
+2. Verify count matches Ï€(10â·) = 664,579
 3. Compute log-gaps
 4. Run full test suite
 5. Compare decay rates across scales
 6. Check for scale-dependent effects
 
-### 5.3 Phase 3: Full Scale (10⁸)
+### 5.3 Phase 3: Full Scale (10â¸)
 
-1. Generate primes to 10⁸
-2. Verify count matches π(10⁸) = 5,761,455
+1. Generate primes to 10â¸
+2. Verify count matches Ï€(10â¸) = 5,761,455
 3. Compute log-gaps
 4. Run full test suite
 5. Final statistical analysis
@@ -230,7 +230,7 @@ def segmented_sieve(limit, segment_size=10**6):
 
 ### 5.4 Phase 4: Robustness Checks
 
-1. **Windowed analysis:** Analyze log-gaps in non-overlapping windows of 10⁵ primes
+1. **Windowed analysis:** Analyze log-gaps in non-overlapping windows of 10âµ primes
 2. **Bootstrap confidence intervals:** 1000 resamples for key statistics
 3. **Sensitivity analysis:** Vary bin counts, significance thresholds
 4. **Alternative metrics:** Test ln(1 + gap/p) as alternative to ln(p_{n+1}/p_n)
@@ -261,7 +261,7 @@ def segmented_sieve(limit, segment_size=10**6):
 
 **If supported**, the results suggest:
 
-1. Rational bounds on prime density analogous to β–δ Doppler bounds
+1. Rational bounds on prime density analogous to Î²â€“Î´ Doppler bounds
 2. Transfer function formulation H(z) for prime-counting approximations
 3. Poles/zeros corresponding to Riemann zeta structure
 
@@ -281,7 +281,7 @@ def segmented_sieve(limit, segment_size=10**6):
 
 ### 7.2 Known Limitations
 
-1. Finite computational range (10⁸ or 10⁹ maximum practical)
+1. Finite computational range (10â¸ or 10â¹ maximum practical)
 2. Cannot distinguish between "true" log-normal and close approximations
 3. Autocorrelation may be sensitive to window size choices
 4. Heavy tails make variance estimates unstable
@@ -293,7 +293,7 @@ def segmented_sieve(limit, segment_size=10**6):
 2. **Edge effects:** First/last quintiles may behave differently
    - Mitigation: Exclude extreme quintiles in robustness checks
 3. **Sieve artifacts:** Computational errors could create spurious patterns
-   - Mitigation: Validate against known π(x) at multiple checkpoints
+   - Mitigation: Validate against known Ï€(x) at multiple checkpoints
 
 ---
 
@@ -301,8 +301,8 @@ def segmented_sieve(limit, segment_size=10**6):
 
 ### 8.1 Experiment Success (Independent of Hypothesis Outcome)
 
-- [ ] All phases (10⁶, 10⁷, 10⁸) complete
-- [ ] Prime counts match known values within ±1
+- [ ] All phases (10â¶, 10â·, 10â¸) complete
+- [ ] Prime counts match known values within Â±1
 - [ ] All statistical tests execute without error
 - [ ] Results are reproducible (seed-fixed where applicable)
 - [ ] FINDINGS.md documents clear conclusion with evidence
@@ -321,10 +321,10 @@ def segmented_sieve(limit, segment_size=10**6):
 
 ### 9.1 Mathematical Foundations
 
-1. Prime Number Theorem: π(x) ~ x/ln(x)
-2. Cramér's model for prime gaps
+1. Prime Number Theorem: Ï€(x) ~ x/ln(x)
+2. CramÃ©r's model for prime gaps
 3. Napier's inequality: z/(z+1) < ln(1+z) < z for z > 0
-4. Mechanical–electrical analogies (impedance/mobility forms)
+4. Mechanicalâ€“electrical analogies (impedance/mobility forms)
 5. Z-transform and Dirichlet series correspondence
 
 ### 9.2 Prior Work in This Project
@@ -343,7 +343,7 @@ def segmented_sieve(limit, segment_size=10**6):
 
 ## 10. Appendix: Preliminary Results Summary
 
-From initial experiment (9,592 primes to 10⁵):
+From initial experiment (9,592 primes to 10âµ):
 
 | Metric | Value |
 |--------|-------|
