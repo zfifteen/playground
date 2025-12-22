@@ -166,10 +166,22 @@ pip install numpy scipy matplotlib statsmodels
 
 ## Performance Notes
 
-- **First run:** ~15-20 minutes to generate 10⁹ primes
-- **Subsequent runs:** ~2-3 minutes (loads from cache)
-- **Memory usage:** ~2-3 GB peak
-- **Disk space:** ~800 MB for cached data
+### Tested at Scale
+
+| Scale | Primes | Time | Data Size | Status |
+|-------|--------|------|-----------|--------|
+| 10^6 | 78,498 | ~13s | 2.5 MB | ✅ Validated |
+| 10^7 | 664,579 | ~95s | 26 MB | ✅ Validated |
+| 10^8 | 5.76M | ~15 min* | ~180 MB* | ⚠️ Estimated |
+| 10^9 | 50.8M | ~3 hrs* | ~1.6 GB* | ⚠️ Estimated |
+
+*Estimated based on observed scaling. See `RESULTS_AT_SCALE.md` for detailed 10^7 results.
+
+### Resource Requirements
+
+- **Memory usage:** ~3 GB peak at 10^7
+- **Disk space:** ~26 MB cached data at 10^7
+- **Caching:** Subsequent runs ~10x faster
 
 ## References
 
