@@ -141,9 +141,8 @@ def compare_distributions(fit_results):
     lognormal_ks = fit_results.get('lognormal', {}).get('ks_statistic', float('inf'))
     f2_falsified = normal_ks < lognormal_ks
     
-    # F4: Exponential fits better than log-normal
+    # Get exponential KS for comparison
     exp_ks = fit_results.get('exponential', {}).get('ks_statistic', float('inf'))
-    f4_exp_better = exp_ks < lognormal_ks
     
     # Compare normal vs log-normal with ratio threshold
     ks_ratio = None
