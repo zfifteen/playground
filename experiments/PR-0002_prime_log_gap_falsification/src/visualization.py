@@ -80,8 +80,11 @@ def plot_decay_trend(
     
     if decile_means is not None:
         x_decile = np.arange(len(decile_means))  # Indices 0-9
+        # Scale x-axis to align decile bins with primary bin positions
+        decile_scale_factor = len(bin_means) / len(decile_means)
+        x_decile_scaled = x_decile * decile_scale_factor
         plt.plot(
-            x_decile * (len(bin_means) / len(decile_means)), decile_means, "s-", 
+            x_decile_scaled, decile_means, "s-", 
             label="Deciles (legacy)", markersize=6, alpha=0.6
         )  # Squares with line, scaled x-axis
     

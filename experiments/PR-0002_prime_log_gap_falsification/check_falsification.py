@@ -8,6 +8,10 @@ from log_gap_analysis import analyze_log_gaps
 from distribution_tests import run_distribution_tests, find_best_fit
 from autocorrelation import autocorrelation_analysis
 
+# Statistical significance threshold (p-value)
+# Using 0.05 as conventional threshold for hypothesis testing
+P_VALUE_THRESHOLD = 0.05
+
 
 def check_falsification(analysis, dist_tests, autocorr):
     """
@@ -19,17 +23,17 @@ def check_falsification(analysis, dist_tests, autocorr):
 
     # F1: 50-bin means show non-decreasing trend (primary check)
     bin_slope = analysis["bin_regression"]["slope"]
-    if bin_slope >= 0 and analysis["bin_regression"]["p_value"] > 0.05:
+    if bin_slope >= 0 and analysis["bin_regression"]["p_value"] > P_VALUE_THRESHOLD:
         falsified = True
         reasons.append("F1: 50-bin means do not decrease")
     
     # F1 (legacy): Quintile/decile means show non-decreasing trend
     quintile_slope = analysis["quintile_regression"]["slope"]
     decile_slope = analysis["decile_regression"]["slope"]
-    if quintile_slope >= 0 and analysis["quintile_regression"]["p_value"] > 0.05:
+    if quintile_slope >= 0 and analysis["quintile_regression"]["p_value"] > P_VALUE_THRESHOLD:
         falsified = True
         reasons.append("F1: Quintile means do not decrease (legacy check)")
-    if decile_slope >= 0 and analysis["decile_regression"]["p_value"] > 0.05:
+    if decile_slope >= 0 and analysis["decile_regression"]["p_value"] > P_VALUE_THRESHOLD:
         falsified = True
         reasons.append("F1: Decile means do not decrease (legacy check)")
 
@@ -41,7 +45,7 @@ def check_falsification(analysis, dist_tests, autocorr):
         reasons.append("F2: Normal fits better than log-normal")
 
     # F3: Indistinguishable from uniform
-    if dist_tests["uniform"]["p_value"] > 0.05:
+    if dist_tests["uniform"]["p_value"] > P_VALUE_THRESHOLD:
         falsified = True
         reasons.append("F3: Indistinguishable from uniform")
 
