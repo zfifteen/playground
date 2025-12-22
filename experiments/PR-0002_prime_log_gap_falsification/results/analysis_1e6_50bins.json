@@ -69,7 +69,8 @@
     "slope": -1.6521993195602506e-05,
     "intercept": 0.0005720505161830793,
     "r_squared": 0.09318830854601443,
-    "p_value": 0.031105546683149014
+    "p_value": 0.031105546683149014,
+    "note": "Compared with the quintile (5-bin) regression (R^2 ≈ 0.54), the 50-bin regression has a much lower R^2 because finer binning exposes more local variability and heteroskedasticity in the log-gap means. Coarser bins average over this noise and make the approximate decay trend appear more linear, whereas with 50 bins a simple straight line explains only a small fraction of the variance even though the slope remains statistically different from zero. This result should therefore be interpreted as weak evidence for decay rather than a strong linear fit."
   },
   "quintile_means": [
     0.0007238848864168265,
