@@ -210,9 +210,12 @@ def profile_at_scale(max_prime: int, n_bins: int = 100, use_cache: bool = False)
     # Phase 6: Visualization (simulated - we'll measure setup time only)
     print("\n[6/6] Visualization Setup...")
     with profiler.time("6_visualization_prep"):
-        # Simulate visualization preparation
-        # In real run, this would include all plot generation
-        time.sleep(0.1)  # Placeholder
+        # NOTE: This is a placeholder. Actual visualization timing would require
+        # running all 17 plots, which is time-consuming. The real visualization
+        # time at 10^7 is ~30-35s based on RESULTS_AT_SCALE.md documentation.
+        # This placeholder is used to show where visualization would fit in the
+        # profiling breakdown, but is not included in scaling analysis.
+        time.sleep(0.1)  # Placeholder only
     
     total_time = time.time() - total_start
     
