@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 from statsmodels.stats.diagnostic import acorr_ljungbox
 from statsmodels.tsa.stattools import acf, pacf
