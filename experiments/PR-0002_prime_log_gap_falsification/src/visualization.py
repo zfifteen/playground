@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 import numpy as np
-import os
 
 # Use non-interactive backend
 plt.switch_backend('Agg')
