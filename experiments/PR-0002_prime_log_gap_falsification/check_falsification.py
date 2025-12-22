@@ -1,0 +1,85 @@
+import numpy as np
+import os
+import sys
+
+sys.path.append("src")
+
+from log_gap_analysis import analyze_log_gaps
+from distribution_tests import run_distribution_tests, find_best_fit
+from autocorrelation import autocorrelation_analysis
+
+
+def check_falsification(analysis, dist_tests, autocorr):
+    """
+    Check falsification criteria.
+    """
+    falsified = False
+    reasons = []
+
+    # F1: Quintile/decile means show non-decreasing trend
+    quintile_slope = analysis["quintile_regression"]["slope"]
+    decile_slope = analysis["decile_regression"]["slope"]
+    if quintile_slope >= 0 and analysis["quintile_regression"]["p_value"] > 0.05:
+        falsified = True
+        reasons.append("F1: Quintile means do not decrease")
+    if decile_slope >= 0 and analysis["decile_regression"]["p_value"] > 0.05:
+        falsified = True
+        reasons.append("F1: Decile means do not decrease")
+
+    # F2: Normal fits better than log-normal
+    normal_ks = dist_tests["normal"]["ks_stat"]
+    lognormal_ks = dist_tests["lognormal"]["ks_stat"]
+    if normal_ks < lognormal_ks:
+        falsified = True
+        reasons.append("F2: Normal fits better than log-normal")
+
+    # F3: Indistinguishable from uniform
+    if dist_tests["uniform"]["p_value"] > 0.05:
+        falsified = True
+        reasons.append("F3: Indistinguishable from uniform")
+
+    # F4: Autocorrelation flat
+    if autocorr["all_uncorrelated"]:
+        falsified = True
+        reasons.append("F4: No autocorrelation at any lag")
+
+    # F5: Skewness/kurtosis consistent with normal
+    skewness = analysis["basic_stats"]["skewness"]
+    kurtosis = analysis["basic_stats"]["kurtosis"]
+    if abs(skewness) < 0.5 and abs(kurtosis) < 1:
+        falsified = True
+        reasons.append("F5: Skewness and kurtosis consistent with normal")
+
+    # F6: Contradict smaller scale (not checked here)
+
+    return falsified, reasons
+
+
+def load_analysis(limit):
+    """
+    Load analysis results.
+    Since we didn't save properly, regenerate.
+    """
+    primes = np.load(f"data/primes_{limit}.npy")
+    analysis = analyze_log_gaps(primes)
+    dist_tests = run_distribution_tests(analysis["log_gaps"])
+    autocorr = autocorrelation_analysis(analysis["log_gaps"])
+    best_dist, best_ks = find_best_fit(dist_tests)
+    return analysis, dist_tests, autocorr, best_dist, best_ks
+
+
+if __name__ == "__main__":
+    # For 10^6
+    limit = 1000000
+    if os.path.exists(f"data/primes_{limit}.npy"):
+        print(f"Checking falsification for {limit}")
+        analysis, dist_tests, autocorr, best_dist, best_ks = load_analysis(limit)
+        falsified, reasons = check_falsification(analysis, dist_tests, autocorr)
+        print(f"Hypothesis falsified: {falsified}")
+        if falsified:
+            for reason in reasons:
+                print(f" - {reason}")
+        else:
+            print("Hypothesis supported at this scale.")
+    else:
+        print("Data not found.")
