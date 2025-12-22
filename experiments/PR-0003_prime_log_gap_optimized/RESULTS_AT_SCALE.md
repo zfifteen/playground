@@ -219,10 +219,10 @@ All plots demonstrate clear patterns consistent with the hypothesis.
 |-------|--------|------|-----------|--------|
 | 10^6 | 78,498 | 13.5s | ~2.5 MB | ✅ Tested |
 | 10^7 | 664,579 | 94.9s | ~26 MB | ✅ Tested |
-| 10^8 | 5,761,455 | ~15 min* | ~180 MB* | ⚠️ Estimated |
-| 10^9 | 50,847,534 | ~3 hours* | ~1.6 GB* | ⚠️ Estimated |
+| 10^8 | 5,761,455 | ~12-20 min* | ~180 MB* | ⚠️ Estimated |
+| 10^9 | 50,847,534 | ~1.5-3 hrs* | ~1.6 GB* | ⚠️ Estimated |
 
-*Estimated based on observed scaling
+*Estimated based on observed sub-linear scaling (efficiency factor ~0.86)
 
 ### Scaling Observations
 
@@ -233,13 +233,21 @@ All plots demonstrate clear patterns consistent with the hypothesis.
    - Box plots with 100 bins over millions of data points are expensive
 4. **Memory:** Peak usage ~3 GB at 10^7, stays manageable
 
-### Recommendations for 10^9 Scale
+### Recommendations for Larger Scales (10^8, 10^9)
 
-To achieve sub-20-minute runs at 10^9:
+Based on observed performance at 10^7, larger scales are feasible but require consideration:
+
+**For 10^8 scale (~12-20 minutes):**
+- Current implementation should work without modification
+- Ensure adequate RAM (8+ GB recommended)
+- Caching is essential for reasonable rerun times
+
+**For 10^9 scale (~1.5-3 hours):**
 1. **Downsample visualizations:** Plot every Nth point for scatter plots
 2. **Parallel processing:** Use multiprocessing for independent plots
-3. **Streaming statistics:** Compute moments incrementally
-4. **Hardware:** Use machine with 8+ GB RAM
+3. **Streaming statistics:** Compute moments incrementally to reduce memory
+4. **Hardware:** Use machine with 16+ GB RAM
+5. **Patience:** First run will take hours; use caching for subsequent analysis
 
 ---
 

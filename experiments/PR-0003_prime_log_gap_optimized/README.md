@@ -4,7 +4,8 @@
 
 This experiment reimplements the prime log-gap analysis from PR-0002 with significant improvements:
 - **100 equal-width bins on the log-prime axis** (not on prime index)
-- **Support for primes up to 10⁹** (vs 10⁸ in PR-0002)
+- **Support for primes up to 10⁹** (vs 10⁸ in PR-0002) - design capability
+- **Tested and validated at 10^7 scale** (664,579 primes)
 - **Disk caching** for primes and computed gaps
 - **Segmented sieve** for memory-efficient prime generation
 - **17 total plots** (12 2D + 5 3D) for comprehensive visualization
@@ -13,11 +14,11 @@ This experiment reimplements the prime log-gap analysis from PR-0002 with signif
 
 | Parameter | Value | Justification |
 |-----------|-------|---------------|
-| Max prime | 10⁹ | Extended from 10⁸ for better statistical power |
+| Max prime (design) | 10⁹ | Extended from 10⁸ for better statistical power |
+| Max prime (tested) | 10^7 | Validated scale (664,579 primes) |
 | Number of bins | 100 | Increased from 50 for finer granularity |
 | Binning strategy | Equal-width on log-prime axis | Differs from PR-0002 (bins by index) |
 | Segment size | 10⁶ | Memory-efficient sieving |
-| Expected primes | ~50,847,534 | From π(10⁹) |
 
 ## File Structure
 
@@ -46,14 +47,20 @@ python run_experiment.py
 ```
 
 This will:
-1. Generate primes up to 10⁹ (or load from cache)
+1. Generate primes up to the specified limit (default: 10⁹) or load from cache
 2. Compute log-gaps (or load from cache)
 3. Bin data into 100 equal-width bins on log-prime axis
 4. Run all statistical tests
 5. Generate all 17 plots
 6. Save results to `results/results.json`
 
-**Estimated time:** <20 minutes for 10⁹ primes (first run without cache)
+**Estimated time:** 
+- 10^6: ~13 seconds
+- 10^7: ~95 seconds (validated)
+- 10^8: ~15 minutes (estimated)
+- 10⁹: ~3 hours* (estimated, not tested)
+
+*Note: Default is 10⁹ but only 10^7 has been validated. Use `--max-prime` to specify scale.
 
 ### Advanced Options
 
@@ -74,8 +81,10 @@ python run_experiment.py --verbose
 
 | File | Description |
 |------|-------------|
-| `data/primes_1000000000.npy` | Cached prime array (if max_prime=10⁹) |
-| `data/gaps_1000000000.npz` | Cached regular gaps, log-gaps, log-primes |
+| `data/primes_<max_prime>.npy` | Cached prime array (e.g., `primes_10000000.npy` for 10^7) |
+| `data/gaps_<max_prime>.npz` | Cached regular gaps, log-gaps, log-primes |
+
+Note: Data files are excluded from git (regenerable via caching).
 
 ### Results
 
@@ -114,7 +123,8 @@ python run_experiment.py --verbose
 
 | Aspect | PR-0002 | PR-0003 (This) |
 |--------|---------|----------------|
-| Max prime | 10⁸ | 10⁹ |
+| Max prime (design) | 10⁸ | 10⁹ |
+| Max prime (tested) | 10⁸ | 10^7 |
 | Binning strategy | 50 bins by index | 100 bins on log-prime axis |
 | Bin count | 50 | 100 |
 | Caching | Partial | Full (primes + gaps) |
@@ -172,16 +182,28 @@ pip install numpy scipy matplotlib statsmodels
 |-------|--------|------|-----------|--------|
 | 10^6 | 78,498 | ~13s | 2.5 MB | ✅ Validated |
 | 10^7 | 664,579 | ~95s | 26 MB | ✅ Validated |
-| 10^8 | 5.76M | ~15 min* | ~180 MB* | ⚠️ Estimated |
-| 10^9 | 50.8M | ~3 hrs* | ~1.6 GB* | ⚠️ Estimated |
+| 10^8 | 5.76M | ~12-20 min* | ~180 MB* | ⚠️ Estimated |
+| 10^9 | 50.8M | ~1.5-3 hrs* | ~1.6 GB* | ⚠️ Estimated |
 
-*Estimated based on observed scaling. See `RESULTS_AT_SCALE.md` for detailed 10^7 results.
+*Estimated based on observed sub-linear scaling (time grows ~0.86x as fast as data). See `RESULTS_AT_SCALE.md` for detailed 10^7 results.
 
 ### Resource Requirements
 
 - **Memory usage:** ~3 GB peak at 10^7
 - **Disk space:** ~26 MB cached data at 10^7
 - **Caching:** Subsequent runs ~10x faster
+
+## Validation Status
+
+### Actually Tested
+- ✅ **10^6 scale:** 78,498 primes, 13s execution
+- ✅ **10^7 scale:** 664,579 primes, 95s execution (comprehensive validation)
+
+### Design Capability
+- ⚙️ **10^8 scale:** Estimated 5.76M primes, ~15 minutes (not tested)
+- ⚙️ **10^9 scale:** Estimated 50.8M primes, ~3 hours (not tested)
+
+**Note:** The implementation supports scales up to 10^9, but only 10^6 and 10^7 have been validated. See `RESULTS_AT_SCALE.md` for comprehensive 10^7 analysis.
 
 ## References
 
