@@ -12,19 +12,26 @@ from autocorrelation import autocorrelation_analysis
 def check_falsification(analysis, dist_tests, autocorr):
     """
     Check falsification criteria.
+    Uses 50-bin analysis as primary (most robust) with quintile/decile as fallback.
     """
     falsified = False
     reasons = []
 
-    # F1: Quintile/decile means show non-decreasing trend
+    # F1: 50-bin means show non-decreasing trend (primary check)
+    bin_slope = analysis["bin_regression"]["slope"]
+    if bin_slope >= 0 and analysis["bin_regression"]["p_value"] > 0.05:
+        falsified = True
+        reasons.append("F1: 50-bin means do not decrease")
+    
+    # F1 (legacy): Quintile/decile means show non-decreasing trend
     quintile_slope = analysis["quintile_regression"]["slope"]
     decile_slope = analysis["decile_regression"]["slope"]
     if quintile_slope >= 0 and analysis["quintile_regression"]["p_value"] > 0.05:
         falsified = True
-        reasons.append("F1: Quintile means do not decrease")
+        reasons.append("F1: Quintile means do not decrease (legacy check)")
     if decile_slope >= 0 and analysis["decile_regression"]["p_value"] > 0.05:
         falsified = True
-        reasons.append("F1: Decile means do not decrease")
+        reasons.append("F1: Decile means do not decrease (legacy check)")
 
     # F2: Normal fits better than log-normal
     normal_ks = dist_tests["normal"]["ks_stat"]

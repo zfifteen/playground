@@ -27,7 +27,7 @@ This document specifies an experiment designed to rigorously test and potentiall
 
 | ID | Null Hypothesis | Falsification Condition |
 |----|-----------------|------------------------|
-| H0-A | Log-gap mean is constant or increasing | Quintile means show no decrease or increase with p |
+| H0-A | Log-gap mean is constant or increasing | 50-bin means show no decrease or increase with p |
 | H0-B | Log-gaps are normally distributed | KS test p-value > 0.05 for normal fit, AND normal KS < log-normal KS |
 | H0-C | Log-gaps are uncorrelated (white noise) | Ljung-Box test p-value > 0.05 at all lags â‰¤ 20 |
 | H0-D | Log-gaps follow simple exponential decay | Exponential KS statistic < log-normal KS statistic |
@@ -92,14 +92,16 @@ log_prime[n] = ln(p[n])
 
 | Test ID | Test Name | Target Hypothesis | Implementation |
 |---------|-----------|-------------------|----------------|
-| T1 | Quintile Mean Regression | H-MAIN-A | Linear regression of quintile means vs quintile index |
-| T2 | Decile Mean Regression | H-MAIN-A | Finer granularity check (10 bins) |
+| T1 | 50-Bin Mean Regression | H-MAIN-A | Linear regression of 50-bin means vs bin index (primary, robust) |
+| T2 | Decile Mean Regression | H-MAIN-A | Legacy 10-bin check for backward compatibility |
 | T3 | KS Test Battery | H-MAIN-B | Fit and compare: normal, log-normal, exponential, gamma, Weibull |
 | T4 | Maximum Likelihood Estimation | H-MAIN-B | MLE for log-normal parameters (Î¼, Ïƒ) |
 | T5 | Ljung-Box Test | H-MAIN-C | Autocorrelation significance at lags 1-20 |
 | T6 | ACF/PACF Analysis | H-MAIN-C | Partial autocorrelation to identify AR structure |
 | T7 | Skewness/Kurtosis | H-MAIN-B | Compare to theoretical values for candidate distributions |
 | T8 | Q-Q Plots | H-MAIN-B | Visual and quantitative assessment of distribution fit |
+
+**Note:** The original implementation used quintiles (5 bins), but this was increased to 50 bins for more robust statistical proof. Quintile analysis is retained for backward compatibility.
 
 #### 3.3.2 Significance Thresholds
 
@@ -114,7 +116,7 @@ log_prime[n] = ln(p[n])
 
 **The hypothesis is FALSIFIED if ANY of the following occur:**
 
-1. **F1:** Quintile/decile means show non-decreasing trend (T1, T2 regression slope â‰¥ 0 with p > 0.05)
+1. **F1:** 50-bin means show non-decreasing trend (T1 regression slope â‰¥ 0 with p > 0.05)
 2. **F2:** Normal distribution fits log-gaps better than log-normal (T3: KS_normal < KS_lognormal)
 3. **F3:** Log-gaps are indistinguishable from uniform random (T3: uniform KS p-value > 0.05)
 4. **F4:** Autocorrelation is flat at all lags (T5: Ljung-Box p > 0.05 for all lags)

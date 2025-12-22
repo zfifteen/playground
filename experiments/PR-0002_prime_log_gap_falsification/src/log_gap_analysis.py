@@ -7,7 +7,8 @@ But logarithms (natural log, ln) compress this growth, making gaps relative rath
 This is key to our hypothesis: in electrical circuits, we often deal with ratios (like voltage logs), not absolute values.
 Log-gaps reveal patterns like decay (gaps shrinking relatively) that might mimic a "damped" system.
 
-We also compute regular gaps for comparison and analyze trends across "quintiles" (5 groups) or "deciles" (10 groups) of primes.
+We also compute regular gaps for comparison and analyze trends across bins (default: 50 bins for robust statistical proof).
+Note: Previous versions used quintiles (5 bins), but 50 bins provides greater statistical robustness.
 """
 
 import numpy as np
@@ -50,16 +51,10 @@ def get_quintile_means(log_gaps: np.ndarray) -> np.ndarray:
     Here, we group the log-gaps by their position (earlier vs. later in the prime list).
     Computing means per group lets us check if gaps change systematically.
     In the hypothesis, we expect averages to decrease (decay) as primes get larger.
+    
+    Note: For more robust statistical analysis, use get_bin_means() with n_bins=50.
     """
-    n = len(log_gaps)
-    quintile_size = n // 5  # Size of each group
-    means = []
-    for i in range(5):  # 5 quintiles
-        start = i * quintile_size
-        end = (i + 1) * quintile_size if i < 4 else n  # Last group takes remainder
-        mean = np.mean(log_gaps[start:end])  # Average gap in this group
-        means.append(mean)
-    return np.array(means)
+    return get_bin_means(log_gaps, n_bins=5)
 
 
 def get_decile_means(log_gaps: np.ndarray) -> np.ndarray:
@@ -69,14 +64,34 @@ def get_decile_means(log_gaps: np.ndarray) -> np.ndarray:
     Deciles are like quintiles but finer: tenths of the data.
     This gives more detail on trends, useful for checking if decay is consistent.
     Similar to quintiles, we look for decreasing means as a sign of "damping."
+    
+    Note: For more robust statistical analysis, use get_bin_means() with n_bins=50.
+    """
+    return get_bin_means(log_gaps, n_bins=10)
+
+
+def get_bin_means(log_gaps: np.ndarray, n_bins: int = 50) -> np.ndarray:
+    """
+    Split log-gaps into n_bins equal groups and find the average gap in each.
+
+    This is a generalized version that supports any number of bins.
+    Default is 50 bins for robust statistical proof (increased from 5 quintiles).
+    More bins provide finer granularity for detecting trends and decay patterns.
+    
+    Args:
+        log_gaps: Array of log-gaps to analyze
+        n_bins: Number of bins to divide the data into (default: 50)
+        
+    Returns:
+        Array of mean log-gap values for each bin
     """
     n = len(log_gaps)
-    decile_size = n // 10  # Size of each group
+    bin_size = n // n_bins
     means = []
-    for i in range(10):  # 10 deciles
-        start = i * decile_size
-        end = (i + 1) * decile_size if i < 9 else n  # Last group takes remainder
-        mean = np.mean(log_gaps[start:end])  # Average gap in this group
+    for i in range(n_bins):
+        start = i * bin_size
+        end = (i + 1) * bin_size if i < n_bins - 1 else n  # Last group takes remainder
+        mean = np.mean(log_gaps[start:end])
         means.append(mean)
     return np.array(means)
 
@@ -107,6 +122,9 @@ def analyze_log_gaps(primes: np.ndarray) -> dict:
     This is the heart of the module: takes a list of primes and outputs everything needed to test the hypothesis.
     It computes gaps, stats, trends, and regressions to see if log-gaps behave like a damped circuit.
     The result dict is used by other modules for plotting and falsification checks.
+    
+    Primary analysis uses 50 bins for robust statistical proof.
+    Quintiles (5 bins) and deciles (10 bins) are retained for backward compatibility.
     """
     log_gaps = compute_log_gaps(primes)  # Get the log-gaps
     regular_gaps = compute_regular_gaps(primes)  # And regular gaps for context
@@ -125,13 +143,19 @@ def analyze_log_gaps(primes: np.ndarray) -> dict:
         "regular_gap_max": np.max(regular_gaps),  # Biggest regular gap
     }
 
-    # Analyze trends in quintiles (5 groups)
+    # Primary analysis with 50 bins for robust statistical proof
+    bin_means_50 = get_bin_means(log_gaps, n_bins=50)  # Averages per bin
+    bin_slope_50, bin_intercept_50, bin_r2_50, bin_p_50 = regression_analysis(
+        bin_means_50  # Fit line to check decay
+    )
+
+    # Backward compatibility: Analyze trends in quintiles (5 groups)
     quintile_means = get_quintile_means(log_gaps)  # Averages per group
     quintile_slope, quintile_intercept, quintile_r2, quintile_p = regression_analysis(
         quintile_means  # Fit line to check decay
     )
 
-    # Finer analysis with deciles (10 groups)
+    # Backward compatibility: Finer analysis with deciles (10 groups)
     decile_means = get_decile_means(log_gaps)
     decile_slope, decile_intercept, decile_r2, decile_p = regression_analysis(
         decile_means
@@ -140,14 +164,23 @@ def analyze_log_gaps(primes: np.ndarray) -> dict:
     # Package everything into a results dictionary
     analysis = {
         "basic_stats": basic_stats,  # Summary numbers
-        "quintile_means": quintile_means,  # Group averages
+        # Primary 50-bin analysis (most robust)
+        "bin_means": bin_means_50,  # 50-bin averages (primary)
+        "bin_regression": {  # Trend line for 50 bins
+            "slope": bin_slope_50,
+            "intercept": bin_intercept_50,
+            "r_squared": bin_r2_50,
+            "p_value": bin_p_50,
+        },
+        # Backward compatibility fields
+        "quintile_means": quintile_means,  # 5-bin averages (legacy)
         "quintile_regression": {  # Trend line for quintiles
             "slope": quintile_slope,
             "intercept": quintile_intercept,
             "r_squared": quintile_r2,
             "p_value": quintile_p,
         },
-        "decile_means": decile_means,
+        "decile_means": decile_means,  # 10-bin averages (legacy)
         "decile_regression": {  # Trend line for deciles
             "slope": decile_slope,
             "intercept": decile_intercept,
@@ -168,5 +201,7 @@ if __name__ == "__main__":
     primes = generate_primes_up_to(100)  # Small set for testing
     analysis = analyze_log_gaps(primes)  # Run full analysis
     print("Basic stats:", analysis["basic_stats"])  # Show summary
-    print("Quintile means:", analysis["quintile_means"])  # Group averages
-    print("Quintile regression:", analysis["quintile_regression"])  # Trend check
+    print("50-bin means:", analysis["bin_means"])  # Primary 50-bin averages
+    print("50-bin regression:", analysis["bin_regression"])  # Primary trend check
+    print("Quintile means (legacy):", analysis["quintile_means"])  # Legacy 5-bin averages
+    print("Quintile regression (legacy):", analysis["quintile_regression"])  # Legacy trend

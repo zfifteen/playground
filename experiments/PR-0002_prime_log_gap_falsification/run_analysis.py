@@ -54,7 +54,7 @@ def run_full_analysis(limit: int, save_data: bool = True):
     print("Generating plots...")
     generate_all_plots(
         analysis["log_gaps"],
-        analysis["quintile_means"],
+        analysis["bin_means"],
         analysis["decile_means"],
         autocorr["acf"],
         autocorr["pacf"],
@@ -72,8 +72,10 @@ def run_full_analysis(limit: int, save_data: bool = True):
             "limit": limit,
             "prime_count": count,
             "basic_stats": analysis["basic_stats"],
-            "quintile_means": analysis["quintile_means"].tolist(),
-            "decile_means": analysis["decile_means"].tolist(),
+            "bin_means": analysis["bin_means"].tolist(),  # Primary 50-bin analysis
+            "bin_regression": analysis["bin_regression"],  # Primary regression
+            "quintile_means": analysis["quintile_means"].tolist(),  # Legacy 5-bin
+            "decile_means": analysis["decile_means"].tolist(),  # Legacy 10-bin
             "quintile_regression": analysis["quintile_regression"],
             "decile_regression": analysis["decile_regression"],
             "best_distribution": best_dist,
