@@ -8,6 +8,7 @@ The pipeline biases search efforts near \(\sqrt{N}\) based on empirical lognorma
 
 ## Usage
 
+### Python API
 ```python
 from src.pipeline import factor_with_lognormal_prefilter
 from src.model import ModelStore
@@ -17,6 +18,13 @@ model = ModelStore()
 cfg = SearchPolicyConfig()
 factor = factor_with_lognormal_prefilter(N, model, cfg)
 ```
+
+### CLI
+```bash
+python factor_cli.py <N> [--max-steps INT] [--radius-scale FLOAT] [--direction-mode ALTERNATE|RANDOM] [--seed INT]
+```
+
+Example: `python factor_cli.py 77` outputs `7 11`
 
 ## Parameters
 
