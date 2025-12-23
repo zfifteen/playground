@@ -63,6 +63,12 @@ def test_distributions_in_band(gaps: np.ndarray, band_name: str,
     Args:
         gaps: Array of gap values within the band
         band_name: Name of the band for reporting
+        n_distributions: Total number of candidate distributions considered
+            in the study (default is N_DISTRIBUTIONS). This is used for
+            multiple-comparison reasoning such as Bonferroni correction.
+        n_bands: Total number of magnitude bands in the study design
+            (default is N_BANDS). This is used for multiple-comparison
+            reasoning across bands.
         
     Returns:
         Dictionary with fit statistics for each distribution
