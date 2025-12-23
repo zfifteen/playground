@@ -64,7 +64,7 @@ def plot_acf(gaps: np.ndarray, acf: np.ndarray, confidence_band: float,
     
     # ACF plot
     plt.subplot(1, 2, 1)
-    plt.stem(lags, acf, basefmt=' ', use_line_collection=True)
+    plt.stem(lags, acf, basefmt=' ')
     plt.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
     plt.axhline(y=confidence_band, color='r', linestyle='--', label='95% CI')
     plt.axhline(y=-confidence_band, color='r', linestyle='--')
@@ -76,7 +76,7 @@ def plot_acf(gaps: np.ndarray, acf: np.ndarray, confidence_band: float,
     
     # Zoom on first 20 lags
     plt.subplot(1, 2, 2)
-    plt.stem(lags[:20], acf[:20], basefmt=' ', use_line_collection=True)
+    plt.stem(lags[:20], acf[:20], basefmt=' ')
     plt.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
     plt.axhline(y=confidence_band, color='r', linestyle='--', label='95% CI')
     plt.axhline(y=-confidence_band, color='r', linestyle='--')

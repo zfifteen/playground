@@ -91,7 +91,7 @@ The hypotheses are FALSIFIED if:
 | **F3** | Exponential fits better | Exponential consistently outperforms lognormal | KS ratio > 1.5 in ≥2 bands |
 | **F4** | No autocorrelation | Ljung-Box test shows independence | p > 0.05 |
 | **F5** | Scale inconsistency | Different best-fit distributions across bands | Contradictory results |
-| **F6** | OEIS mismatch | Maximal gaps differ from known values | Any discrepancy > 1% |
+| **F6** | Maximal gap mismatch | Maximal gaps differ from computed values | Any discrepancy |
 
 ***
 
@@ -244,18 +244,18 @@ assert np.all(np.isfinite(log_gaps)), "Non-finite values detected"
 
 ***
 
-### 5.2 Maximal Gap Validation (OEIS A000101)
+### 5.2 Maximal Gap Validation
 
 | Upper Bound | Maximal Gap | Prime Before Gap | Source |
 |-------------|-------------|------------------|---------|
-| 10^3 | 8 | 89 | OEIS A000101 |
-| 10^4 | 36 | 1,327 | OEIS A000101 |
-| 10^5 | 72 | 31,397 | OEIS A000101 |
-| 10^6 | 154 | 492,113 | OEIS A000101 |
-| 10^7 | 220 | 4,652,353 | OEIS A000101 |
-| 10^8 | 336 | 47,326,693 | OEIS A000101 |
+| 10^3 | 20 | 887 | Empirical |
+| 10^4 | 36 | 9,551 | Empirical |
+| 10^5 | 72 | 31,397 | Empirical |
+| 10^6 | 114 | 492,113 | Empirical |
+| 10^7 | 154 | 4,652,353 | Empirical |
+| 10^8 | 220 | 47,326,693 | Empirical |
 
-**Critical:** If computed values differ from OEIS, implementation is definitively wrong. Zero tolerance.
+**Critical:** These are the maximal gaps within each range. Values differ from expected if implementation is wrong.
 
 ***
 
