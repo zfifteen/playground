@@ -39,17 +39,26 @@ def compute_effect_size_ratio(ks_stat1: float, ks_stat2: float) -> float:
     return ks_stat2 / ks_stat1
 
 
-def compute_practical_significance(ratio: float, threshold: float = 1.5) -> bool:
+def compute_practical_significance(ratio: float, threshold: float = 1.5) -> dict:
     """Determine if the effect size ratio indicates practical significance.
     
     Args:
-        ratio: KS statistic ratio from compute_effect_size_ratio
+        ratio: KS statistic ratio from compute_effect_size_ratio (exp_ks / lognormal_ks)
         threshold: Ratio threshold for practical significance (default 1.5)
         
     Returns:
-        True if ratio indicates practically significant difference
+        Dictionary with:
+        - 'significant': True if ratio indicates practically significant difference
+        - 'favors_lognormal': True if ratio > threshold (lognormal fits better)
+        - 'favors_exponential': True if ratio < 1/threshold (exponential fits better)
     """
-    return ratio > threshold or ratio < (1.0 / threshold)
+    favors_lognormal = ratio > threshold
+    favors_exponential = ratio < (1.0 / threshold)
+    return {
+        'significant': favors_lognormal or favors_exponential,
+        'favors_lognormal': favors_lognormal,
+        'favors_exponential': favors_exponential,
+    }
 
 
 def test_distributions_in_band(gaps: np.ndarray, band_name: str, 
@@ -175,10 +184,15 @@ def test_distributions_in_band(gaps: np.ndarray, band_name: str,
             )
             results['ks_ratio_exp_to_lognormal'] = ks_ratio
             
-            # Practical significance: ratio > EFFECT_SIZE_THRESHOLD means lognormal fits substantially better
-            results['practical_significance'] = compute_practical_significance(
+            # Practical significance with directional tracking
+            # ratio > EFFECT_SIZE_THRESHOLD means lognormal fits substantially better
+            # ratio < 1/EFFECT_SIZE_THRESHOLD means exponential fits substantially better
+            practical_sig = compute_practical_significance(
                 ks_ratio, EFFECT_SIZE_THRESHOLD
             )
+            results['practical_significance'] = practical_sig['significant']
+            results['practical_sig_favors_lognormal'] = practical_sig['favors_lognormal']
+            results['practical_sig_favors_exponential'] = practical_sig['favors_exponential']
     
     results['band_name'] = band_name
     results['n_samples'] = len(gaps)
@@ -220,11 +234,14 @@ def test_distributions(primes: np.ndarray) -> Dict:
             band_results[band_name] = test_distributions_in_band(band_gaps, band_name)
     
     # Cross-band analysis with family-wise error rate correction
+    # Track directional practical significance separately to avoid
+    # conflating lognormal-favoring and exponential-favoring effects
     best_fits = []
     lognormal_count = 0
     exponential_count = 0
     ks_ratios = []
-    practical_sig_count = 0
+    practical_sig_lognormal_count = 0  # Count only lognormal-favoring
+    practical_sig_exponential_count = 0  # Count only exponential-favoring
     
     # Bonferroni-corrected alpha for cross-band decision
     # Testing 3 bands as independent hypotheses
@@ -239,16 +256,22 @@ def test_distributions(primes: np.ndarray) -> Dict:
             elif results['best_fit'] == 'exponential':
                 exponential_count += 1
         
-        # Collect KS ratio values for practical significance assessment
+        # Collect KS ratio values and directional practical significance
         if 'ks_ratio_exp_to_lognormal' in results:
             ks_ratios.append(results['ks_ratio_exp_to_lognormal'])
-            if results.get('practical_significance', False):
-                practical_sig_count += 1
+            # Track directional practical significance separately
+            if results.get('practical_sig_favors_lognormal', False):
+                practical_sig_lognormal_count += 1
+            if results.get('practical_sig_favors_exponential', False):
+                practical_sig_exponential_count += 1
     
     # Interpret consistency with Bonferroni-corrected threshold
-    # Require both statistical consistency (>=2 bands) AND practical significance
-    if lognormal_count >= 2 and practical_sig_count >= 1:
+    # For lognormal detection: require lognormal-favoring practical significance
+    # This prevents conflating opposing effects (avoid false resonance)
+    if lognormal_count >= 2 and practical_sig_lognormal_count >= 1:
         interpretation = "Lognormal structure detected (reject H0 for H-MAIN-B)"
+    elif exponential_count >= 2 and practical_sig_exponential_count >= 1:
+        interpretation = "Exponential structure detected with practical significance (fail to reject H0)"
     elif exponential_count >= 2:
         interpretation = "Exponential structure detected (fail to reject H0)"
     elif lognormal_count >= 2:
@@ -261,7 +284,8 @@ def test_distributions(primes: np.ndarray) -> Dict:
         'best_fits': best_fits,
         'lognormal_count': lognormal_count,
         'exponential_count': exponential_count,
-        'practical_sig_count': practical_sig_count,
+        'practical_sig_lognormal_count': practical_sig_lognormal_count,
+        'practical_sig_exponential_count': practical_sig_exponential_count,
         'ks_ratios': ks_ratios,
         'cross_band_alpha': cross_band_alpha,
         'n_bands_tested': n_bands_tested,
