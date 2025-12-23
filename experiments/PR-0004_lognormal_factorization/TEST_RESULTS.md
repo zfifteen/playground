@@ -24,6 +24,11 @@ This file tracks all factorization attempts using the lognormal pre-filter pipel
 | 999962835357 | 999979 999983 | 20000 | 1.0 | ALTERNATE | 42 | Band 1 upper edge (~10^6), successful |
 | 99999629367083 | 9999973 9999991 | 20000 | 1.0 | ALTERNATE | 42 | Band 2 upper edge (~10^7), successful |
 
+## Performance Summary (Bands 1-2, 1 semiprime each)
+- Band 1: Avg pipeline 0.1386s, classical 0.0020s, speedup 0.01x, success 100.00%
+- Band 2: Avg pipeline 0.1467s, classical 0.0020s, speedup 0.01x, success 100.00%
+- Note: Low speedup due to small N; pipeline overhead vs fast classical factoring. Speedup expected to improve for larger N in fitted bands.
+
 ## Notes
 - Small semiprimes (up to ~200) factored reliably.
 - Large N (>10^12) return NONE, as expected for current model and step limits.

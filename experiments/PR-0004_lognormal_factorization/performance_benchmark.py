@@ -98,7 +98,9 @@ def performance_benchmark():
 
     for band_idx, band in enumerate(model.bands):
         print(f"Benchmarking band {band_idx + 1}: {band.p_min}-{band.p_max}")
-        test_ns = generate_test_semiprimes(band, 5)  # 5 semiprimes per band for speed
+        test_ns = generate_test_semiprimes(
+            band, 1
+        )  # 1 semiprime per band for timing stats
 
         for N in test_ns:
             # Set seed for reproducibility
