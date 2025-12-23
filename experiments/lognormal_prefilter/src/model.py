@@ -101,11 +101,13 @@ def create_default_model_store() -> ModelStore:
     """
     Create a ModelStore with default bands using parameters from empirical data.
     
-    Parameters are extracted from the lognormal fits in:
-    - results-10-6.json (primes up to 10^6)
-    - results-10-7.json (primes up to 10^7)
-    - results-10-8.json (primes up to 10^8)
-    - results-10-9.json (primes up to 10^9)
+    Parameters are extracted from lognormal fits in the results files from
+    the PR-0003_prime_log_gap_optimized experiment. Each file contains
+    fitted parameters for primes within specific ranges:
+    - results-10-5.json: primes up to 10^5 (Band 1 uses 10^5-10^6 range)
+    - results-10-6.json: primes up to 10^6 (Band 2 uses 10^6-10^7 range)
+    - results-10-7.json: primes up to 10^7 (Band 3 uses 10^7-10^8 range)
+    - results-10-9.json: primes up to 10^9 (Band 4 uses 10^8-10^9 range)
     
     Returns:
         ModelStore initialized with 4 default bands

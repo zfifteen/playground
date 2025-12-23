@@ -41,6 +41,9 @@ def sample_lognormal(shape: float, scale: float, rng: Optional[random.Random] = 
     u1 = rng.random()
     u2 = rng.random()
     
+    # Guard against u1 = 0.0 to prevent log domain error
+    u1 = max(u1, 1e-10)
+    
     # Box-Muller: z = sqrt(-2 * ln(u1)) * cos(2*pi*u2)
     z = math.sqrt(-2.0 * math.log(u1)) * math.cos(2.0 * math.pi * u2)
     

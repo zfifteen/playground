@@ -1,6 +1,7 @@
 """
 Top-level lognormal pre-filter factorization pipeline.
 """
+import random
 from typing import Optional
 
 try:
@@ -53,6 +54,8 @@ def factor_with_lognormal_prefilter(
     
     # Strategy 3: Final fallback to pure classical method
     # (In case the prefilter's internal fallback also failed)
-    factor = pollard_rho(N, max_iterations=200000)
+    # Initialize RNG if seed is provided for reproducibility
+    rng = random.Random(cfg.random_seed) if cfg.random_seed is not None else random
+    factor = pollard_rho(N, max_iterations=200000, rng=rng)
     
     return factor

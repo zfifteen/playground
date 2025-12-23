@@ -6,11 +6,11 @@ import random
 from typing import Optional
 
 try:
-    from .model import ModelStore, Band
+    from .model import ModelStore
     from .config import SearchPolicyConfig
     from .sampling import sample_lognormal, clamp_gap
 except ImportError:
-    from model import ModelStore, Band
+    from model import ModelStore
     from config import SearchPolicyConfig
     from sampling import sample_lognormal, clamp_gap
 

@@ -65,7 +65,7 @@ def generate_lognormal_offsets(
     return offsets
 
 
-def probably_prime(n: int, k: int = 5) -> bool:
+def probably_prime(n: int, k: int = 5, rng: Optional[random.Random] = None) -> bool:
     """
     Miller-Rabin primality test.
     
@@ -75,6 +75,7 @@ def probably_prime(n: int, k: int = 5) -> bool:
     Args:
         n: Number to test
         k: Number of rounds (higher = more accurate)
+        rng: Optional random number generator for reproducibility
         
     Returns:
         True if n is probably prime, False if definitely composite
@@ -86,6 +87,9 @@ def probably_prime(n: int, k: int = 5) -> bool:
     if n % 2 == 0:
         return False
     
+    if rng is None:
+        rng = random
+    
     # Write n-1 as 2^r * d
     r, d = 0, n - 1
     while d % 2 == 0:
@@ -94,7 +98,7 @@ def probably_prime(n: int, k: int = 5) -> bool:
     
     # Witness loop
     for _ in range(k):
-        a = random.randrange(2, n - 1)
+        a = rng.randrange(2, n - 1)
         x = pow(a, d, n)
         
         if x == 1 or x == n - 1:
@@ -110,7 +114,7 @@ def probably_prime(n: int, k: int = 5) -> bool:
     return True
 
 
-def pollard_rho(N: int, max_iterations: int = 100000) -> Optional[int]:
+def pollard_rho(N: int, max_iterations: int = 100000, rng: Optional[random.Random] = None) -> Optional[int]:
     """
     Pollard's rho algorithm for factorization.
     
@@ -119,6 +123,7 @@ def pollard_rho(N: int, max_iterations: int = 100000) -> Optional[int]:
     Args:
         N: Number to factor
         max_iterations: Maximum number of iterations
+        rng: Optional random number generator for reproducibility
         
     Returns:
         A non-trivial factor of N, or None if not found
@@ -129,12 +134,15 @@ def pollard_rho(N: int, max_iterations: int = 100000) -> Optional[int]:
     if N < 2:
         return None
     
+    if rng is None:
+        rng = random
+    
     # Try multiple times with different starting values
     for attempt in range(5):
         # Choose random starting values
-        x = random.randint(2, N - 1)
+        x = rng.randint(2, N - 1)
         y = x
-        c = random.randint(1, N - 1)
+        c = rng.randint(1, N - 1)
         d = 1
         
         iterations = 0
@@ -186,6 +194,9 @@ def factor_with_candidate_prefilter(
     # Generate candidate offsets
     offsets = generate_lognormal_offsets(p0, band, cfg)
     
+    # Initialize RNG if seed is provided
+    rng = random.Random(cfg.random_seed) if cfg.random_seed is not None else random
+    
     # Test each candidate
     for offset in offsets:
         q_candidate = p0 + offset
@@ -202,4 +213,4 @@ def factor_with_candidate_prefilter(
             return q_candidate
     
     # Fall back to classical method
-    return pollard_rho(N)
+    return pollard_rho(N, rng=rng)

@@ -8,7 +8,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from fermat import isqrt, is_perfect_square, lognormal_fermat_stage
-from model import create_default_model_store, Band, ModelStore
+from model import create_default_model_store
 from config import SearchPolicyConfig
 
 
@@ -131,9 +131,9 @@ def test_lognormal_fermat_stage_returns_none_on_prime():
     for p in primes:
         factor = lognormal_fermat_stage(p, store, cfg)
         # Should return None since p is prime
-        # (unless by chance it returns p itself, which is fine)
         if factor is not None:
-            assert factor == p or p % factor != 0
+            # If it returns something, it should be p itself (trivial factor)
+            assert factor == p
     
     print("✓ lognormal_fermat_stage handles primes")
 
