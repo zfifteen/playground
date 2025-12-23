@@ -131,7 +131,7 @@ plot_gap_histogram(gaps, output='results/figures/gap_hist.png')
 
 ### Phase 3: Full Scale (10^8)
 - Prime count: 5,761,455
-- Max gap: 336 at prime 47,326,693
+- Max gap: 220 at prime 47,326,693
 - Final statistical conclusions
 
 ## Computational Requirements

@@ -494,7 +494,7 @@ matplotlib>=3.7.0
 ### Phase 1: Validation (10^6 scale)
 1. Generate primes to 10^6
 2. Verify π(10^6) = 78,498
-3. Verify max gap = 154 at prime 492,113
+3. Verify max gap = 114 at prime 492,113
 4. Run full test suite
 5. Validate against OEIS benchmarks
 
