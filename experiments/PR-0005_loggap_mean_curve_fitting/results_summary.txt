@@ -1,0 +1,30 @@
+
+=== bin_stats_1e5.json ===
+loggap_mean_curve_loglog     mse=2.325e-03  r2=0.7687  params=(np.float64(0.34744750420508563), np.float64(-0.1642174057384708))
+loggap_mean_curve_power_normed mse=2.680e-03  r2=0.7335  params=(np.float64(0.48987716473627296), np.float64(-0.5389187229186623), np.float64(0.2988819620739806))
+loggap_mean_curve_linear     mse=4.839e-03  r2=0.5187  params=(np.float64(0.22806979830524826), np.float64(-0.02596525956304962))
+loggap_mean_curve_normed     mse=4.839e-03  r2=0.5187  params=(np.float64(0.20866736036139208), np.float64(-0.2781289684437971))
+
+=== bin_stats_1e6.json ===
+loggap_mean_curve_loglog     mse=2.671e-03  r2=0.7243  params=(np.float64(0.32318855873361735), np.float64(-0.1442527184981249))
+loggap_mean_curve_power_normed mse=2.936e-03  r2=0.6969  params=(np.float64(0.48525704218686383), np.float64(-0.5341575021292614), np.float64(0.25782453501822494))
+loggap_mean_curve_linear     mse=5.380e-03  r2=0.4446  params=(np.float64(0.1940457495541975), np.float64(-0.018957905014417076))
+loggap_mean_curve_normed     mse=5.380e-03  r2=0.4446  params=(np.float64(0.17966126690519832), np.float64(-0.24628479182388502))
+
+=== bin_stats_1e7.json ===
+loggap_mean_curve_loglog     mse=2.804e-03  r2=0.7026  params=(np.float64(0.30654094821154326), np.float64(-0.13012483031792574))
+loggap_mean_curve_power_normed mse=2.959e-03  r2=0.6860  params=(np.float64(0.48429579477836765), np.float64(-0.5321241639710076), np.float64(0.23114635755042137))
+loggap_mean_curve_linear     mse=5.567e-03  r2=0.4094  params=(np.float64(0.17446057989260902), np.float64(-0.014871772595048599))
+loggap_mean_curve_normed     mse=5.567e-03  r2=0.4094  params=(np.float64(0.16300527125974482), np.float64(-0.2271023629790388))
+
+=== bin_stats_1e8.json ===
+loggap_mean_curve_loglog     mse=3.030e-03  r2=0.6703  params=(np.float64(0.2957969418779339), np.float64(-0.12034304397619036))
+loggap_mean_curve_power_normed mse=3.135e-03  r2=0.6589  params=(np.float64(0.48030982795331334), np.float64(-0.5271652259973932), np.float64(0.213212909237755))
+loggap_mean_curve_linear     mse=5.836e-03  r2=0.3649  params=(np.float64(0.15813011487527215), np.float64(-0.011955943273295428))
+loggap_mean_curve_normed     mse=5.836e-03  r2=0.3649  params=(np.float64(0.14878313955666758), np.float64(-0.2098298924077308))
+
+=== bin_stats_1e9.json ===
+loggap_mean_curve_loglog     mse=3.207e-03  r2=0.6474  params=(np.float64(0.28305310114312476), np.float64(-0.1110130152643577))
+loggap_mean_curve_power_normed mse=3.244e-03  r2=0.6433  params=(np.float64(0.4768843764915585), np.float64(-0.522511275397347), np.float64(0.19864775066414525))
+loggap_mean_curve_linear     mse=5.963e-03  r2=0.3443  params=(np.float64(0.147577227904172), np.float64(-0.010016593947018038))
+loggap_mean_curve_normed     mse=5.963e-03  r2=0.3443  params=(np.float64(0.13963108635012814), np.float64(-0.19862722957449552))

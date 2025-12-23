@@ -37,6 +37,11 @@ import numpy as np
 from scipy.optimize import curve_fit
 
 
+# Initial parameter guess for slope in curve fitting
+# Based on observed decay trend in mean log-gaps
+INITIAL_SLOPE = -0.002
+
+
 @dataclass
 class TrendFitResult:
     """IMPLEMENTED: Result container for trend fitting."""
@@ -54,7 +59,8 @@ def load_bin_data(path: Path) -> Tuple[np.ndarray, np.ndarray]:
     {
       "binning": {
         "centers": [...],      # May not exist in older files
-        "bin_means": [...]
+        "bin_means": [...],
+        "n_bins": ...          # May also be in metadata
       },
       "metadata": {
         "max_prime": "...",
@@ -75,7 +81,8 @@ def load_bin_data(path: Path) -> Tuple[np.ndarray, np.ndarray]:
     else:
         # Compute centers from metadata
         max_prime = float(data["metadata"]["max_prime"])
-        n_bins = int(data["binning"]["n_bins"])
+        # n_bins may be in binning or metadata
+        n_bins = int(binning.get("n_bins", data["metadata"]["n_bins"]))
         
         # Estimate range: from ln(2) to ln(max_prime)
         min_log = np.log(2)  # First prime is 2
@@ -149,10 +156,10 @@ def run_for_scale(json_path: Path) -> List[TrendFitResult]:
     logp, means = load_bin_data(json_path)
 
     configs = [
-        ("loggap_mean_curve_linear", loggap_mean_curve_linear, (means.mean(), -0.002), (-np.inf, np.inf)),
-        ("loggap_mean_curve_normed", loggap_mean_curve_normed, (means.mean(), -0.002), (-np.inf, np.inf)),
-        ("loggap_mean_curve_loglog", loggap_mean_curve_loglog, (means.mean(), -0.002), (-np.inf, np.inf)),
-        ("loggap_mean_curve_power_normed", loggap_mean_curve_power_normed, (means.mean(), -0.002, 1.0), ([-np.inf, -np.inf, 0.01], [np.inf, np.inf, 10.0])),
+        ("loggap_mean_curve_linear", loggap_mean_curve_linear, (means.mean(), INITIAL_SLOPE), (-np.inf, np.inf)),
+        ("loggap_mean_curve_normed", loggap_mean_curve_normed, (means.mean(), INITIAL_SLOPE), (-np.inf, np.inf)),
+        ("loggap_mean_curve_loglog", loggap_mean_curve_loglog, (means.mean(), INITIAL_SLOPE), (-np.inf, np.inf)),
+        ("loggap_mean_curve_power_normed", loggap_mean_curve_power_normed, (means.mean(), INITIAL_SLOPE, 1.0), ([-np.inf, -np.inf, 0.01], [np.inf, np.inf, 10.0])),
     ]
 
     results: List[TrendFitResult] = []
