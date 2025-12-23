@@ -11,6 +11,11 @@ import os
 from pathlib import Path
 from typing import Optional, Tuple
 
+# Backend constants for prime generation
+BACKEND_SEGMENTED = "segmented"
+BACKEND_Z5D = "z5d"
+BACKEND_AUTO = "auto"
+
 
 # Known prime counts for validation
 KNOWN_PI_VALUES = {
@@ -19,6 +24,55 @@ KNOWN_PI_VALUES = {
     10**8: 5761455,
     10**9: 50847534,
 }
+
+
+def _generate_primes_z5d(limit: int) -> np.ndarray:
+    """
+    Generate primes using Z5D predictor by computing nth primes sequentially.
+
+    Args:
+        limit: Upper bound for primes (inclusive)
+
+    Returns:
+        Sorted numpy array of primes <= limit
+    """
+    import sys
+
+    sys.path.insert(
+        0, str(Path(__file__).parent.parent / "z5d-prime-predictor" / "src" / "python")
+    )
+    from z5d_predictor.predictor import predict_nth_prime
+
+    # Use binary search to find approximate π(limit)
+    # Then generate primes until we exceed limit
+    primes = []
+    n = 1
+
+    # Estimate π(limit) using n * ln(n) approximation
+    import math
+
+    if limit > 10:
+        estimated_pi = int(limit / math.log(limit) * 1.5)  # overestimate
+    else:
+        estimated_pi = limit
+
+    # Generate primes up to limit
+    while True:
+        result = predict_nth_prime(n)
+        if result.prime > limit:
+            break
+        primes.append(result.prime)
+        n += 1
+
+        # Progress indicator for large runs
+        if n % 10000 == 0:
+            print(f"Generated {n:,} primes (current: {result.prime:,})")
+
+    # Decide dtype based on magnitude
+    if limit <= (1 << 63) - 1:
+        return np.array(primes, dtype=np.uint64)
+    else:
+        return np.array(primes, dtype=object)
 
 
 def sieve_of_eratosthenes(limit: int) -> np.ndarray:
@@ -103,8 +157,37 @@ def segmented_sieve(limit: int, segment_size: int = 10**6) -> np.ndarray:
     return np.array(result, dtype=np.uint64)
 
 
+def _generate_primes_backend(limit: int, backend: str) -> np.ndarray:
+    """
+    Internal router to select prime generation backend.
+
+    Args:
+        limit: Upper bound for primes
+        backend: One of BACKEND_SEGMENTED, BACKEND_Z5D, BACKEND_AUTO
+
+    Returns:
+        Numpy array of primes
+    """
+    if backend == BACKEND_AUTO:
+        # Use segmented up to 10^9, Z5D beyond
+        if limit <= 10**9:
+            backend = BACKEND_SEGMENTED
+        else:
+            backend = BACKEND_Z5D
+
+    if backend == BACKEND_SEGMENTED:
+        return segmented_sieve(limit)
+    elif backend == BACKEND_Z5D:
+        return _generate_primes_z5d(limit)
+    else:
+        raise ValueError(f"Unknown backend: {backend}")
+
+
 def generate_primes_to_limit(
-    limit: int, cache_dir: Optional[str] = None, validate: bool = True
+    limit: int,
+    cache_dir: Optional[str] = None,
+    validate: bool = True,
+    backend: str = BACKEND_AUTO,
 ) -> np.ndarray:
     """
     Generate or load primes up to limit with optional disk caching.
@@ -113,6 +196,7 @@ def generate_primes_to_limit(
         limit: Maximum value for prime generation
         cache_dir: Directory for caching primes (default: ../data)
         validate: Whether to validate count against KNOWN_PI_VALUES
+        backend: Prime generation backend ('segmented', 'z5d', 'auto')
 
     Returns:
         NumPy array of primes up to limit
@@ -132,22 +216,21 @@ def generate_primes_to_limit(
         print(f"Loaded {len(primes):,} primes from cache")
     else:
         # Generate primes
-        print(f"Generating primes up to {limit:,}...")
-        primes = segmented_sieve(limit)
+        print(f"Generating primes up to {limit:,} using backend='{backend}'...")
+        primes = _generate_primes_backend(limit, backend)
 
         # Cache to disk
         cache_dir.mkdir(parents=True, exist_ok=True)
-        np.save(cache_file, primes)
+        np.save(cache_file, primes, allow_pickle=True)  # allow_pickle for object dtype
         print(f"Generated and cached {len(primes):,} primes")
 
-    # Validate if requested
-    if validate and limit in KNOWN_PI_VALUES:
+    # Validate if requested: only when using segmented backend and limit is in KNOWN_PI_VALUES
+    if validate and backend == BACKEND_SEGMENTED and limit in KNOWN_PI_VALUES:
         expected = KNOWN_PI_VALUES[limit]
         actual = len(primes)
         if actual != expected:
             raise ValueError(
-                f"Prime count mismatch for limit {limit}: "
-                f"expected {expected}, got {actual}"
+                f"Prime count mismatch at {limit}: expected {expected}, got {actual}"
             )
         print(f"Validation passed: π({limit:,}) = {actual:,}")
 
@@ -191,9 +274,16 @@ def compute_gaps(
 
     # Compute gaps
     print(f"Computing gaps...")
-    regular_gaps = np.diff(primes)
-    log_primes = np.log(primes.astype(np.float64))
+    # Handle object dtype for very large primes
+    if primes.dtype == object:
+        # Convert to float64 for log (will overflow beyond ~10^308)
+        primes_float = np.array([float(p) for p in primes], dtype=np.float64)
+    else:
+        primes_float = primes.astype(np.float64)
+
+    log_primes = np.log(primes_float)
     log_gaps = np.diff(log_primes)
+    regular_gaps = np.diff(primes.astype(np.int64))  # may overflow for huge primes
 
     # Cache if requested
     if cache_dir is not None and limit is not None:

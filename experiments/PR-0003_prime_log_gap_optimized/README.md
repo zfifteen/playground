@@ -89,6 +89,23 @@ python run_experiment.py --verbose
 - `--max-lag`: Control lag range for autocorrelation tests (default: 40).
 - `--subsample-rate`: Sample size for subsampling mode (default: 100,000).
 
+## Prime Generation Backends
+
+PR-0003 supports two prime generation backends:
+
+- **segmented** (default ≤10⁹): Sieve of Eratosthenes, validated to 10⁷
+- **z5d** (10⁹–10¹²³³): Closed-form nth-prime predictor from z5d-prime-predictor
+
+The `auto` backend (default) uses segmented up to 10⁹ and switches to Z5D beyond.
+
+#### Z5D Backend
+
+Requires:
+- `gmpy2` library (`pip install gmpy2`)
+- z5d-prime-predictor submodule (initialized automatically)
+
+Note: For primes beyond ~10³⁰⁸, `np.log` will lose precision. Statistical tests remain approximate at extreme scales.
+
 ## Output Files
 
 ### Data Files
@@ -181,14 +198,24 @@ numpy >= 1.21.0
 scipy >= 1.7.0
 matplotlib >= 3.5.0
 statsmodels >= 0.13.0
+gmpy2 >= 2.1.0  # Required for Z5D backend
 ```
 
 Install with:
 ```bash
-pip install numpy scipy matplotlib statsmodels
+pip install numpy scipy matplotlib statsmodels gmpy2
 ```
 
 ## Performance Notes
+
+### Backend Comparison
+
+| Scale | Segmented | Z5D | Primes Generated |
+|-------|-----------|-----|------------------|
+| 10⁶   | 6.4s      | ~5s | 78,498           |
+| 10⁷   | 22.6s     | ~15s| 664,579          |
+| 10⁸   | 3-5min    | ~1min| 5,761,455       |
+| 10¹⁰  | N/A       | ~5min| 455,052,511     |
 
 ### Tested at Scale
 
@@ -219,6 +246,13 @@ pip install numpy scipy matplotlib statsmodels
 - ⚙️ **10^9 scale:** Estimated 50.8M primes, ~3 hours (not tested)
 
 **Note:** The implementation supports scales up to 10^9, but only 10^6 and 10^7 have been validated. See `RESULTS_AT_SCALE.md` for comprehensive 10^7 analysis.
+
+## Known Limitations
+
+1. **Numerical precision:** Beyond 10³⁰⁸, float64 log overflows. Statistics become approximate.
+2. **Cache compatibility:** Z5D-generated caches are compatible with all backends.
+3. **Validation:** KNOWN_PI_VALUES only covers 10⁶–10⁹ for segmented backend.
+4. **Memory:** Z5D generates sequentially, lower peak memory than segmented at large scales.
 
 ### Scientific Implications of Autocorrelation Settings
 

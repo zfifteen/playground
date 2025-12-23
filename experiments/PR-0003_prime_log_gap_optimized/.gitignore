@@ -10,7 +10,7 @@ data/*.npy
 data/*.npz
 
 # Result files (can be regenerated - large images excluded)
-results/*.png
+#results/*.png
 
 # Log files
 *.log

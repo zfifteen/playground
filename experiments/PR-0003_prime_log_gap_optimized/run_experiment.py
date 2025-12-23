@@ -8,6 +8,7 @@ Runs complete analysis with 100 bins on log-prime axis for primes up to 10^9.
 import sys
 import os
 import json
+import math
 import time
 import argparse
 from datetime import datetime
@@ -60,6 +61,8 @@ def run_experiment(
     subsample_rate: int = 100000,
     use_cache: bool = True,
     verbose: bool = True,
+    backend: str = "auto",
+    plots: bool = False,
 ):
     """Execute complete experiment pipeline."""
 
@@ -70,6 +73,7 @@ def run_experiment(
     print(f"Parameters:")
     print(f"  Max prime: {max_prime:,}")
     print(f"  Number of bins: {n_bins}")
+    print(f"  Prime backend: {backend}")
     print(f"  Autocorr mode: {autocorr_mode}")
     print(f"  Max lag: {max_lag}")
     print(f"  Subsample rate: {subsample_rate}")
@@ -78,7 +82,7 @@ def run_experiment(
 
     base_dir = Path(__file__).parent
     data_dir = base_dir / "data"
-    results_dir = base_dir / "results"
+    results_dir = base_dir / "results" / f"10^{int(math.log10(max_prime))}"
 
     # Create directories
     data_dir.mkdir(exist_ok=True)
@@ -90,7 +94,9 @@ def run_experiment(
     if verbose:
         print("[1/8] Generating/loading primes...")
     cache_dir = str(data_dir) if use_cache else None
-    primes = generate_primes_to_limit(max_prime, cache_dir=cache_dir, validate=True)
+    primes = generate_primes_to_limit(
+        max_prime, cache_dir=cache_dir, validate=True, backend=backend
+    )
 
     # Step 2: Compute/load gaps
     if verbose:
@@ -137,84 +143,98 @@ def run_experiment(
     # Monotonic decay check
     is_monotonic = check_decay_monotonic(bin_analysis["mean"])
 
-    # Step 5: Generate 2D plots
-    if verbose:
-        print("[5/8] Generating 12 2D plots...")
+    # Step 5-6: Generate plots (optional)
+    if plots:
+        # Step 5: Generate 2D plots
+        if verbose:
+            print("[5/8] Generating 12 2D plots...")
 
-    suffix = f"(N={max_prime:,})"
+        suffix = f"(N={max_prime:,})"
 
-    plot_decay_trend(
-        bin_analysis, regression, str(results_dir / "decay_trend.png"), suffix
-    )
-    plot_log_gap_histogram(
-        log_gaps,
-        str(results_dir / "log_gap_histogram.png"),
-        n_bins=100,
-        title_suffix=suffix,
-    )
-    plot_qq_lognormal(log_gaps, str(results_dir / "qq_plot_lognormal.png"), suffix)
-    plot_acf(
-        acf_pacf,
-        str(results_dir / "acf.png"),
-        suffix,
-        ljung_box.get("status", "not_evaluated") if ljung_box else "not_evaluated",
-    )
-    plot_pacf(
-        acf_pacf,
-        str(results_dir / "pacf.png"),
-        suffix,
-        ljung_box.get("status", "not_evaluated") if ljung_box else "not_evaluated",
-    )
-    plot_log_prime_vs_log_gap(
-        log_primes, log_gaps, str(results_dir / "log_prime_vs_log_gap.png"), suffix
-    )
-    plot_box_plot_per_bin(
-        log_gaps,
-        bin_analysis["assignments"][:-1],
-        str(results_dir / "box_plot_per_bin.png"),
-        n_bins=n_bins,
-        title_suffix=suffix,
-    )
-    plot_cdf(log_gaps, str(results_dir / "cdf.png"), suffix)
-    plot_kde(log_gaps, str(results_dir / "kde.png"), suffix)
-    plot_regression_residuals(
-        bin_analysis, regression, str(results_dir / "regression_residuals.png"), suffix
-    )
-    plot_log_gap_vs_regular_gap(
-        regular_gaps, log_gaps, str(results_dir / "log_gap_vs_regular_gap.png"), suffix
-    )
-    plot_prime_density(log_primes, str(results_dir / "prime_density.png"), suffix)
+        plot_decay_trend(
+            bin_analysis, regression, str(results_dir / "decay_trend.png"), suffix
+        )
+        plot_log_gap_histogram(
+            log_gaps,
+            str(results_dir / "log_gap_histogram.png"),
+            n_bins=100,
+            title_suffix=suffix,
+        )
+        plot_qq_lognormal(log_gaps, str(results_dir / "qq_plot_lognormal.png"), suffix)
+        plot_acf(
+            acf_pacf,
+            str(results_dir / "acf.png"),
+            suffix,
+            ljung_box.get("status", "not_evaluated") if ljung_box else "not_evaluated",
+        )
+        plot_pacf(
+            acf_pacf,
+            str(results_dir / "pacf.png"),
+            suffix,
+            ljung_box.get("status", "not_evaluated") if ljung_box else "not_evaluated",
+        )
+        plot_log_prime_vs_log_gap(
+            log_primes, log_gaps, str(results_dir / "log_prime_vs_log_gap.png"), suffix
+        )
+        plot_box_plot_per_bin(
+            log_gaps,
+            bin_analysis["assignments"][:-1],
+            str(results_dir / "box_plot_per_bin.png"),
+            n_bins=n_bins,
+            title_suffix=suffix,
+        )
+        plot_cdf(log_gaps, str(results_dir / "cdf.png"), suffix)
+        plot_kde(log_gaps, str(results_dir / "kde.png"), suffix)
+        plot_regression_residuals(
+            bin_analysis,
+            regression,
+            str(results_dir / "regression_residuals.png"),
+            suffix,
+        )
+        plot_log_gap_vs_regular_gap(
+            regular_gaps,
+            log_gaps,
+            str(results_dir / "log_gap_vs_regular_gap.png"),
+            suffix,
+        )
+        plot_prime_density(log_primes, str(results_dir / "prime_density.png"), suffix)
 
-    # Step 6: Generate 3D plots
-    if verbose:
-        print("[6/8] Generating 5 3D plots...")
+        # Step 6: Generate 3D plots
+        if verbose:
+            print("[6/8] Generating 5 3D plots...")
 
-    plot_scatter_3d(
-        log_primes,
-        log_gaps,
-        str(results_dir / "scatter_3d.png"),
-        sample_size=10000,
-        title_suffix=suffix,
-    )
-    plot_surface_3d(
-        log_primes,
-        log_gaps,
-        str(results_dir / "surface_3d.png"),
-        n_bins_x=50,
-        n_bins_y=50,
-        title_suffix=suffix,
-    )
-    plot_contour_3d(
-        log_gaps,
-        str(results_dir / "contour_3d.png"),
-        max_lag=50,
-        n_scales=5,
-        title_suffix=suffix,
-    )
-    plot_wireframe_3d(bin_analysis, str(results_dir / "wireframe_3d.png"), suffix)
-    plot_bar_3d(
-        bin_analysis, str(results_dir / "bar_3d.png"), n_groups=10, title_suffix=suffix
-    )
+        plot_scatter_3d(
+            log_primes,
+            log_gaps,
+            str(results_dir / "scatter_3d.png"),
+            sample_size=10000,
+            title_suffix=suffix,
+        )
+        plot_surface_3d(
+            log_primes,
+            log_gaps,
+            str(results_dir / "surface_3d.png"),
+            n_bins_x=50,
+            n_bins_y=50,
+            title_suffix=suffix,
+        )
+        plot_contour_3d(
+            log_gaps,
+            str(results_dir / "contour_3d.png"),
+            max_lag=50,
+            n_scales=5,
+            title_suffix=suffix,
+        )
+        plot_wireframe_3d(bin_analysis, str(results_dir / "wireframe_3d.png"), suffix)
+        plot_bar_3d(
+            bin_analysis,
+            str(results_dir / "bar_3d.png"),
+            n_groups=10,
+            title_suffix=suffix,
+        )
+    else:
+        if verbose:
+            print("[5-6/8] Skipping plot generation (--plots not enabled)...")
 
     # Step 7: Compile results
     if verbose:
@@ -258,9 +278,9 @@ def run_experiment(
         "regression": make_serializable(regression),
         "ks_tests": make_serializable(ks_tests),
         "autocorrelation": {
-            "ljung_box": make_serializable(ljung_box)
-            if ljung_box is not None
-            else None,
+            "ljung_box": (
+                make_serializable(ljung_box) if ljung_box is not None else None
+            ),
             "acf_pacf_summary": {
                 "significant_lags": make_serializable(
                     acf_pacf.get("significant_lags", [])
@@ -268,9 +288,11 @@ def run_experiment(
                 "nlags": acf_pacf.get("nlags", max_lag),
             },
             "autocorr_mode": autocorr_mode,
-            "ljungbox_status": ljung_box.get("status", "not_evaluated")
-            if ljung_box
-            else "not_evaluated",
+            "ljungbox_status": (
+                ljung_box.get("status", "not_evaluated")
+                if ljung_box
+                else "not_evaluated"
+            ),
         },
         "moments": make_serializable(skew_kurt),
         "checks": {
@@ -304,7 +326,9 @@ def run_experiment(
         print(f"Time elapsed: {elapsed:.1f}s ({elapsed / 60:.1f} min)")
         print(f"Primes generated: {len(primes):,}")
         print(f"Bins used: {bin_analysis['bins_used']}/{n_bins}")
-        print(f"Results saved to: {results_file}")
+        print(
+            f"Results saved to: {results_file} (in results/10^{int(math.log10(max_prime))}/)"
+        )
         print()
         print("Key Findings:")
         print(
@@ -353,6 +377,18 @@ def parse_arguments():
         default=100000,
         help="Subsampling rate for approximate tests (default: 100000)",
     )
+    parser.add_argument(
+        "--prime-backend",
+        type=str,
+        choices=["segmented", "z5d", "auto"],
+        default="auto",
+        help="Prime generation backend: segmented (up to 10^9), z5d (up to 10^1233), or auto (switch at 10^9)",
+    )
+    parser.add_argument(
+        "--plots",
+        action="store_true",
+        help="Enable plot generation (disabled by default)",
+    )
     parser.add_argument("--no-cache", action="store_true", help="Disable caching")
     parser.add_argument(
         "--verbose",
@@ -378,6 +414,8 @@ def main():
             subsample_rate=args.subsample_rate,
             use_cache=not args.no_cache,
             verbose=args.verbose,
+            backend=args.prime_backend,
+            plots=args.plots,
         )
         return 0
     except Exception as e:
