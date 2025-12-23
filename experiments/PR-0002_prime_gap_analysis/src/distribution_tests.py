@@ -10,34 +10,39 @@ from typing import Dict, Tuple
 from scipy import stats
 
 
-def compute_cohens_d(ks_stat1: float, ks_stat2: float, n: int) -> float:
-    """Compute Cohen's d effect size for comparing two KS statistics.
+def compute_effect_size_ratio(ks_stat1: float, ks_stat2: float) -> float:
+    """Compute effect size ratio for comparing two distribution fits.
     
-    Cohen's d measures the standardized difference between two means.
-    For KS statistics, we compute the effect size as the difference in 
-    KS statistics normalized by the pooled standard error.
+    For goodness-of-fit comparisons, we use the KS statistic ratio rather than
+    Cohen's d (which is designed for comparing means). The ratio directly shows
+    how much better one distribution fits compared to another.
     
     Args:
         ks_stat1: KS statistic for first distribution (e.g., lognormal)
         ks_stat2: KS statistic for second distribution (e.g., exponential)
-        n: Sample size
         
     Returns:
-        Cohen's d effect size. Interpretation:
-        - |d| < 0.2: negligible
-        - 0.2 <= |d| < 0.5: small
-        - 0.5 <= |d| < 0.8: medium
-        - |d| >= 0.8: large
+        Effect size ratio (ks_stat2 / ks_stat1). Interpretation:
+        - ratio > 1.5: ks_stat1 distribution fits substantially better
+        - ratio < 0.67: ks_stat2 distribution fits substantially better
+        - ratio between 0.67 and 1.5: similar fit quality
     """
-    # Standard error of KS statistic is approximately sqrt(1/(2n))
-    # For comparing two KS statistics, we use pooled SE
-    se_ks = np.sqrt(1.0 / (2 * n))
+    if ks_stat1 < 1e-10:
+        return float('inf') if ks_stat2 > 1e-10 else 1.0
+    return ks_stat2 / ks_stat1
+
+
+def compute_practical_significance(ratio: float, threshold: float = 1.5) -> bool:
+    """Determine if the effect size ratio indicates practical significance.
     
-    # Cohen's d = (mean1 - mean2) / pooled_sd
-    # Here we use the difference in KS statistics
-    cohens_d = (ks_stat2 - ks_stat1) / se_ks
-    
-    return cohens_d
+    Args:
+        ratio: KS statistic ratio from compute_effect_size_ratio
+        threshold: Ratio threshold for practical significance (default 1.5)
+        
+    Returns:
+        True if ratio indicates practically significant difference
+    """
+    return ratio > threshold or ratio < (1.0 / threshold)
 
 
 def test_distributions_in_band(gaps: np.ndarray, band_name: str) -> Dict:
@@ -139,28 +144,27 @@ def test_distributions_in_band(gaps: np.ndarray, band_name: str) -> Dict:
         results['best_fit'] = best_fit
         
         # Apply Bonferroni correction for multiple testing
-        # Testing 4 distributions across 3 bands = 12 total tests
-        n_tests = len(ks_stats)
-        n_bands = 3  # Total bands in study
-        bonferroni_alpha = 0.05 / (n_tests * n_bands) if n_tests > 0 else 0.05
+        # Use study-wide correction: 4 distributions × 3 bands = 12 total tests
+        # This is applied consistently across all bands
+        n_distributions = 4  # normal_on_log, exponential, gamma, weibull
+        n_total_bands = 3  # Total bands in study design
+        total_tests = n_distributions * n_total_bands
+        bonferroni_alpha = 0.05 / total_tests
         results['bonferroni_alpha'] = bonferroni_alpha
-        results['n_tests'] = n_tests
-        results['n_bands'] = n_bands
+        results['n_distributions_tested'] = len(ks_stats)
+        results['total_study_tests'] = total_tests
         
         # Check if lognormal (normal on log) is best and compute effect size
         if 'normal_on_log' in ks_stats and 'exponential' in ks_stats:
-            ks_ratio = ks_stats['exponential'] / ks_stats['normal_on_log']
+            # Use KS ratio as effect size measure (appropriate for distribution comparisons)
+            ks_ratio = compute_effect_size_ratio(
+                ks_stats['normal_on_log'], 
+                ks_stats['exponential']
+            )
             results['ks_ratio_exp_to_lognormal'] = ks_ratio
             
-            # Compute Cohen's d for practical significance
-            # Positive Cohen's d means lognormal fits better (lower KS)
-            cohens_d = compute_cohens_d(
-                ks_stats['normal_on_log'], 
-                ks_stats['exponential'], 
-                len(gaps)
-            )
-            results['cohens_d_lognormal_vs_exponential'] = cohens_d
-            results['practical_significance'] = abs(cohens_d) > 0.5
+            # Practical significance: ratio > 1.5 means lognormal fits substantially better
+            results['practical_significance'] = compute_practical_significance(ks_ratio)
     
     results['band_name'] = band_name
     results['n_samples'] = len(gaps)
@@ -205,7 +209,7 @@ def test_distributions(primes: np.ndarray) -> Dict:
     best_fits = []
     lognormal_count = 0
     exponential_count = 0
-    cohens_d_values = []
+    ks_ratios = []
     practical_sig_count = 0
     
     # Bonferroni-corrected alpha for cross-band decision
@@ -221,9 +225,9 @@ def test_distributions(primes: np.ndarray) -> Dict:
             elif results['best_fit'] == 'exponential':
                 exponential_count += 1
         
-        # Collect Cohen's d values for practical significance assessment
-        if 'cohens_d_lognormal_vs_exponential' in results:
-            cohens_d_values.append(results['cohens_d_lognormal_vs_exponential'])
+        # Collect KS ratio values for practical significance assessment
+        if 'ks_ratio_exp_to_lognormal' in results:
+            ks_ratios.append(results['ks_ratio_exp_to_lognormal'])
             if results.get('practical_significance', False):
                 practical_sig_count += 1
     
@@ -244,7 +248,7 @@ def test_distributions(primes: np.ndarray) -> Dict:
         'lognormal_count': lognormal_count,
         'exponential_count': exponential_count,
         'practical_sig_count': practical_sig_count,
-        'cohens_d_values': cohens_d_values,
+        'ks_ratios': ks_ratios,
         'cross_band_alpha': cross_band_alpha,
         'n_bands_tested': n_bands_tested,
         'interpretation': interpretation,

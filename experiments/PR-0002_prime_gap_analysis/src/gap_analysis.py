@@ -127,10 +127,17 @@ def test_pnt_deviation(primes: np.ndarray, n_bins: int = 100) -> Dict[str, float
         ci_upper = 0.0
     
     # Interpret results using the original threshold of 0.001
-    # Note: The threshold 0.001 was chosen a priori based on the expectation that
-    # deviations smaller than 0.1% per log unit of prime magnitude are negligible.
-    # While observed slopes (~0.003) exceed this threshold and are statistically
-    # significant, they remain practically negligible for most applications.
+    # 
+    # Significance thresholds explained:
+    # - Slope threshold (0.001): Effect size criterion. Deviations smaller than 0.1%
+    #   per log unit of prime magnitude are considered negligible for practical purposes.
+    #   This was chosen a priori based on domain knowledge.
+    # - p-value threshold (0.01 for rejection, 0.05 for fail-to-reject): Statistical 
+    #   significance criterion. The stricter 0.01 is used for rejection to reduce
+    #   false positives (Type I error), while 0.05 is the conventional threshold
+    #   for failing to reject H0.
+    # - Both criteria must be met to reject H0: this requires the effect to be both
+    #   statistically significant AND practically meaningful.
     if abs(slope) < 0.001 or p_value > 0.05:
         interpretation = "Consistent with PNT (fail to reject H0)"
     elif slope < -0.001 and p_value < 0.01:

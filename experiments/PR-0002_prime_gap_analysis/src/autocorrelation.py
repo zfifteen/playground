@@ -76,6 +76,9 @@ def compute_pacf(data: np.ndarray, max_lag: int = 40) -> np.ndarray:
         phi[:k-1] = pacf[1:k]
         
         # Compute numerator and denominator for Yule-Walker equations
+        # The slice acf[k-1:0:-1] creates a reversed array of acf[1] through acf[k-1]
+        # This is equivalent to [acf[k-1], acf[k-2], ..., acf[1]] which is needed
+        # for the Durbin-Levinson recursion: sum(phi[j] * rho[k-j]) for j=1 to k-1
         numerator = acf[k] - np.sum(phi[:k-1] * acf[k-1:0:-1])
         denominator = 1.0 - np.sum(phi[:k-1] * acf[1:k])
         
