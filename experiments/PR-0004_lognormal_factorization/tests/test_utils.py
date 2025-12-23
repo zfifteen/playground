@@ -1,5 +1,6 @@
 """Tests for utilities."""
 
+import random
 import pytest
 from src.model import Band
 from src.utils import sample_lognormal, clamp_gap, is_perfect_square, pollard_rho
