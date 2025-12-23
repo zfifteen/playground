@@ -4,7 +4,6 @@ import math
 import random
 from typing import Optional
 from .model import Band
-from .config import SearchPolicyConfig
 
 
 def sample_lognormal(shape: float, scale: float, rng: random.Random) -> float:

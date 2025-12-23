@@ -1,7 +1,5 @@
 """Lognormal candidate pre-filter."""
 
-import math
-import random
 from typing import List, Optional
 from .model import ModelStore, Band
 from .config import SearchPolicyConfig

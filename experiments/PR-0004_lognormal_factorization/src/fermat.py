@@ -1,7 +1,6 @@
 """Lognormal-guided Fermat factorization stage."""
 
 import math
-import random
 from typing import Optional
 from .model import ModelStore, Band
 from .config import SearchPolicyConfig
