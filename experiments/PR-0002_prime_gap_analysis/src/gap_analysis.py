@@ -186,7 +186,6 @@ def validate_oeis_maxgaps(primes: np.ndarray) -> Dict[str, Dict]:
         10**8: (220, 47326693),
     }
     
-    gaps = np.diff(primes)
     max_prime = int(np.max(primes))
     
     results = {}
