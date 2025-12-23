@@ -4,15 +4,14 @@ import math
 import random
 from typing import Optional
 from .model import Band
+from .config import SearchPolicyConfig
 
 
-def sample_lognormal(shape: float, scale: float, seed: Optional[int] = None) -> float:
+def sample_lognormal(shape: float, scale: float, rng: random.Random) -> float:
     """Sample from lognormal distribution (loc=0)."""
-    if seed is not None:
-        random.seed(seed)
     # Using Box-Muller transform for normal
-    u1 = random.random()
-    u2 = random.random()
+    u1 = rng.random()
+    u2 = rng.random()
     z = math.sqrt(-2 * math.log(u1)) * math.cos(2 * math.pi * u2)
     return scale * math.exp(shape * z)
 
@@ -46,28 +45,28 @@ def gcd(a: int, b: int) -> int:
     return a
 
 
-def pollard_rho(N: int) -> Optional[int]:
-    """Simple Pollard Rho factorization."""
+def pollard_rho(N: int, max_c: int = 5) -> Optional[int]:
+    """Simple Pollard Rho factorization with multiple c tries."""
     if N % 2 == 0:
         return 2
     if N < 2:
         return None
 
-    # f(x) = x^2 + c mod N
-    c = 1
-    x = 3  # Changed from 2
-    y = 3
-    d = 1
-    iterations = 0
-    max_iterations = 10000  # Prevent infinite loop
+    for c in range(1, max_c + 1):
+        x = 3
+        y = 3
+        d = 1
+        iterations = 0
+        max_iterations = 10000  # Prevent infinite loop per c
 
-    while d == 1 and iterations < max_iterations:
-        x = (x * x + c) % N
-        y = (y * y + c) % N
-        y = (y * y + c) % N
-        d = gcd(abs(x - y), N)
-        iterations += 1
+        while d == 1 and iterations < max_iterations:
+            x = (x * x + c) % N
+            y = (y * y + c) % N
+            y = (y * y + c) % N
+            d = gcd(abs(x - y), N)
+            iterations += 1
 
-    if d == N or iterations >= max_iterations:
-        return None  # N is prime or not found
-    return d
+        if d != 1 and d != N:
+            return d
+
+    return None  # Not factored

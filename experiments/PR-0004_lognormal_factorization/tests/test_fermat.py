@@ -16,5 +16,6 @@ def test_lognormal_fermat_stage_small():
     model = ModelStore()
     cfg = SearchPolicyConfig(max_steps=10000, radius_scale=10000)
     # Semiprime: 7*11=77, sqrt~8.77
-    factor = lognormal_fermat_stage(77, model, cfg, seed=42)
+    cfg.seed = 42
+    factor = lognormal_fermat_stage(77, model, cfg)
     assert factor in [7, 11] or factor is None  # May not find due to small N vs model

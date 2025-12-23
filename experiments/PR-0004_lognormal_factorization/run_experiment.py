@@ -42,7 +42,8 @@ def benchmark():
     for N in test_ns:
         # Pipeline
         start = time.time()
-        pipeline_factor = factor_with_lognormal_prefilter(N, model, cfg, seed=42)
+        cfg.seed = 42  # Set seed on config for reproducibility
+        pipeline_factor = factor_with_lognormal_prefilter(N, model, cfg)
         pipeline_time = time.time() - start
 
         # Classical

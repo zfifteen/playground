@@ -47,18 +47,15 @@ def generate_lognormal_offsets(
     cumulative_offset = 0.0
     direction = 1
 
-    if seed is not None:
-        random.seed(seed)
-
     for _ in range(cfg.max_steps):
-        g = sample_lognormal(band.shape, band.scale, seed)
+        g = sample_lognormal(band.shape, band.scale, cfg.rng)
         g = clamp_gap(g, band)
         cumulative_offset += g * cfg.radius_scale
 
         if cfg.direction_mode == "ALTERNATE":
             direction = -direction
         elif cfg.direction_mode == "RANDOM":
-            direction = random.choice([-1, 1])
+            direction = cfg.rng.choice([-1, 1])
 
         off = direction * round(cumulative_offset)
         offsets.append(off)

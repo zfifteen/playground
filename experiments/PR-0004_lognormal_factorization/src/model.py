@@ -56,7 +56,7 @@ class ModelStore:
         return None
 
     def get_closest_band(self, p: int) -> Band:
-        """Return the closest band by p range."""
+        """Return the closest band by p range (approximation for out-of-band)."""
         if p < self.bands[0].p_min:
             return self.bands[0]
         elif p > self.bands[-1].p_max:

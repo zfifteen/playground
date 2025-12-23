@@ -12,7 +12,8 @@ def test_pipeline_vs_classical():
     test_ns = [77, 91, 119]  # Semiprimes 7*11, 7*13, 7*17
 
     for N in test_ns:
-        pipeline_factor = factor_with_lognormal_prefilter(N, model, cfg, seed=42)
+        cfg.seed = 42
+        pipeline_factor = factor_with_lognormal_prefilter(N, model, cfg)
         classical_factor = factor_classical(N)
         assert pipeline_factor is not None
         # For small N, pollard_rho may not find quickly, skip assert for classical

@@ -7,13 +7,14 @@ from src.utils import sample_lognormal, clamp_gap, is_perfect_square, pollard_rh
 
 def test_sample_lognormal():
     band = Band(100000, 1000000, 1.3, 1e-4)
-    samples = [sample_lognormal(band.shape, band.scale, seed=i) for i in range(100)]
+    rng = random.Random(42)
+    samples = [sample_lognormal(band.shape, band.scale, rng) for _ in range(100)]
     assert all(s > 0 for s in samples)
 
 
 def test_clamp_gap():
     band = Band(100000, 1000000, 1.3, 1e-4)
-    assert clamp_gap(0.5, band) == 0.01  # Above generic max (100*scale=0.01)
+    assert clamp_gap(0.5, band) == 0.01  # Clamped down to generic max (100*scale=0.01)
     assert clamp_gap(0.001, band) == 0.001  # Within
     assert clamp_gap(0.000005, band) == 0.000005  # Above min (scale/100=1e-6)
 

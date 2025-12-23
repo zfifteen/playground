@@ -4,14 +4,7 @@ This experiment implements a factorization pipeline for semiprimes \(N = pq\) us
 
 ## Overview
 
-The pipeline biases search efforts near \(\sqrt{N}\) based on empirical lognormal gap distributions derived from prime gaps up to \(10^9\).
-
-## Structure
-
-- `src/`: Core implementation
-- `tests/`: Unit and integration tests
-- `data/`: Any generated data or benchmarks
-- `run_experiment.py`: Script to run benchmarks
+The pipeline biases search efforts near \(\sqrt{N}\) based on empirical lognormal distributions derived from prime gaps up to \(10^9\). Bands are hardcoded for \(\sqrt{N}\) in \(10^5\)–\(10^9\), with approximations for smaller/larger values. This is a research experiment for semiprimes in the fitted regime.
 
 ## Usage
 

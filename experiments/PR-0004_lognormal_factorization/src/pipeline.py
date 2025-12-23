@@ -15,12 +15,12 @@ def factor_with_lognormal_prefilter(
     Full pipeline: Fermat stage -> candidate prefilter -> classical fallback.
     """
     # Stage 1: Lognormal-guided Fermat
-    factor = lognormal_fermat_stage(N, model_store, cfg, seed)
+    factor = lognormal_fermat_stage(N, model_store, cfg)
     if factor:
         return factor
 
     # Stage 2: Candidate prefilter
-    factor = factor_with_candidate_prefilter(N, model_store, cfg, seed)
+    factor = factor_with_candidate_prefilter(N, model_store, cfg)
     if factor:
         return factor
 
