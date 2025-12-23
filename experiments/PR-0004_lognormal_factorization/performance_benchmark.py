@@ -9,24 +9,67 @@ from src.model import ModelStore, Band
 from src.config import SearchPolicyConfig
 
 
-def generate_primes_in_range(min_p: int, max_p: int, count: int) -> List[int]:
-    """Generate primes in [min_p, max_p) using sieve."""
-    # Simple sieve for the range
-    sieve = [True] * (max_p - min_p)
-    primes = []
+def segmented_sieve(limit: int, segment_size: int = 10**6) -> List[int]:
+    """Generate primes up to limit using memory-efficient segmented sieve."""
+    if limit < 2:
+        return []
 
-    for i in range(2, int(max_p**0.5) + 1):
-        start = ((min_p + i - 1) // i) * i
-        for j in range(max(start, min_p), max_p, i):
-            if j != i and j >= min_p:
-                sieve[j - min_p] = False
+    # Step 1: Get small primes up to sqrt(limit)
+    sqrt_limit = int(limit**0.5) + 1
+    small_primes = sieve_of_eratosthenes(sqrt_limit)
 
-    for i in range(min_p, max_p):
-        if sieve[i - min_p] and i >= 2:
-            primes.append(i)
-            if len(primes) >= count:
+    # Step 2: Initialize result with small primes
+    result = list(small_primes)
+
+    # Step 3: Process segments from sqrt(limit) to limit
+    low_start = int(
+        sqrt_limit if sqrt_limit > small_primes[-1] else small_primes[-1] + 1
+    )
+
+    for low in range(low_start, limit + 1, segment_size):
+        high = min(low + segment_size, limit + 1)
+        segment = [True] * (high - low)
+
+        # Mark composites using small primes
+        for p in small_primes:
+            if p * p > high:
                 break
-    return primes[:count]
+
+            # Find first multiple of p in segment
+            start = ((low + p - 1) // p) * p
+
+            # Mark all multiples as composite
+            for j in range(max(start, low), high, p):
+                segment[j - low] = False
+
+        # Extract primes from segment
+        segment_primes = [low + i for i in range(len(segment)) if segment[i]]
+        result.extend(segment_primes)
+
+    return [p for p in result if p <= limit]
+
+
+def sieve_of_eratosthenes(limit: int) -> List[int]:
+    """Basic Sieve of Eratosthenes for small primes."""
+    if limit < 2:
+        return []
+
+    sieve = [True] * (limit + 1)
+    sieve[0] = sieve[1] = False
+
+    for i in range(2, int(limit**0.5) + 1):
+        if sieve[i]:
+            for j in range(i * i, limit + 1, i):
+                sieve[j] = False
+
+    return [i for i in range(2, limit + 1) if sieve[i]]
+
+
+def generate_primes_in_range(min_p: int, max_p: int, count: int) -> List[int]:
+    """Generate primes in [min_p, max_p) using segmented sieve."""
+    all_primes = segmented_sieve(max_p - 1)
+    primes_in_range = [p for p in all_primes if min_p <= p < max_p]
+    return primes_in_range[:count]
 
 
 def generate_test_semiprimes(band: Band, count: int) -> List[int]:
@@ -55,7 +98,7 @@ def performance_benchmark():
 
     for band_idx, band in enumerate(model.bands):
         print(f"Benchmarking band {band_idx + 1}: {band.p_min}-{band.p_max}")
-        test_ns = generate_test_semiprimes(band, 10)  # 10 semiprimes per band
+        test_ns = generate_test_semiprimes(band, 5)  # 5 semiprimes per band for speed
 
         for N in test_ns:
             # Set seed for reproducibility
