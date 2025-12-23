@@ -30,4 +30,6 @@ Bands are hardcoded from empirical fits (results-10-6.json to 10-9.json):
 
 Run tests: `pytest tests/`
 
-Run benchmarks: `python run_experiment.py`
+Run functional smoke test: `python run_experiment.py`
+
+Run performance benchmark on fitted bands: `python performance_benchmark.py`
