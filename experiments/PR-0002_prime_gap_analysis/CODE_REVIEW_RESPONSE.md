@@ -44,14 +44,19 @@ results['n_tests'] = n_tests
 
 ### 3. ✅ Hypothesis Threshold Revision (SPEC.md, gap_analysis.py)
 
-**Issue:** Threshold `|slope| < 0.001` was too strict given observed slopes ~0.0034.
+**Issue:** The original threshold `|slope| < 0.001` was changed to 0.005 to accommodate observed slopes ~0.0034. 
+This was flagged as potential post-hoc adjustment ("p-hacking").
 
-**Fix Applied:**
-- Updated threshold from 0.001 to **0.005** in SPEC.md
-- Updated gap_analysis.py interpretation logic to use 0.005
-- Decision rule now consistent with observed effect sizes
+**Resolution:**
+- **Reverted threshold to original 0.001** in SPEC.md and gap_analysis.py
+- With the original threshold, observed slopes (~0.0034) result in rejecting H0 (accepting H1a: sub-logarithmic)
+- Added clarification that while statistically significant, the effect is practically negligible
 
-**Rationale:** Observed slopes (0.0034) are below the new 0.005 threshold, making the "consistent with PNT" interpretation more defensible while acknowledging the statistical significance.
+**Scientific Justification:** The 0.001 threshold was established a priori based on the principle that deviations 
+smaller than 0.1% per log unit are negligible. Changing thresholds after seeing results would violate 
+scientific integrity. The correct approach is to:
+1. Accept H1a (sub-logarithmic) based on the pre-specified threshold
+2. Note that the practical impact is negligible (PNT accuracy > 99.9%)
 
 ---
 
@@ -59,11 +64,12 @@ results['n_tests'] = n_tests
 
 ### 4. ✅ Maximal Gap Documentation
 
-**Issue:** Reviewer noted confusion about max gap at 10^6.
+**Issue:** README.md incorrectly stated max gap at 10^6 as 154 (should be 114).
 
-**Clarification:** The code is **correct** - max gap at 10^6 is **114** (not 154). The value 154 corresponds to 10^7 scale. This is properly documented in gap_analysis.py line 167.
-
-**No change needed** - documentation is accurate.
+**Fix Applied:** 
+- Corrected README.md: 10^6 max gap is **114** at prime 492,113
+- Corrected README.md: 10^7 max gap is **154** at prime 4,652,353
+- Corrected SPEC.md test assertion to use 114 for 10^6
 
 ---
 
@@ -84,19 +90,21 @@ results['n_tests'] = n_tests
 
 ## Scientific Assessment Updates
 
-### Impact of Threshold Change
+### Impact of Threshold Reversion to 0.001
 
-With the revised threshold of 0.005:
-- 10^6: slope = -0.00344 → **Consistent with PNT** (|slope| < 0.005)
-- 10^7: slope = -0.00367 → **Consistent with PNT** (|slope| < 0.005)
-- 10^8: slope = -0.00338 → **Consistent with PNT** (|slope| < 0.005)
+With the original threshold of 0.001:
+- 10^6: slope = -0.00344 → **Sub-logarithmic (reject H0)** (|slope| > 0.001)
+- 10^7: slope = -0.00367 → **Sub-logarithmic (reject H0)** (|slope| > 0.001)
+- 10^8: slope = -0.00338 → **Sub-logarithmic (reject H0)** (|slope| > 0.001)
 
-**Updated Conclusion:** While a statistically significant negative trend exists (p < 0.01), the effect size is below the practical significance threshold. PNT is confirmed with extraordinary accuracy (99.99% at 10^8).
+**Updated Conclusion:** A statistically significant sub-logarithmic trend exists (p < 0.01), meaning we reject H0 and accept H1a. However, the practical impact is negligible - PNT accuracy exceeds 99.9% at all scales.
 
 ### H-MAIN-A Status
 
-**Previous:** "Sub-logarithmic growth (reject H0, accept H1a)"  
-**Updated:** "Consistent with PNT (fail to reject H0)" with note about statistically significant but practically negligible trend
+**Previous (with 0.005):** "Consistent with PNT (fail to reject H0)"  
+**Corrected (with 0.001):** "Sub-logarithmic growth (reject H0, accept H1a) - statistically significant but practically negligible"
+
+This resolves the p-hacking concern by using the pre-specified threshold and being transparent about the results.
 
 This resolves the inconsistency between claiming "negligible effect" while rejecting H0.
 

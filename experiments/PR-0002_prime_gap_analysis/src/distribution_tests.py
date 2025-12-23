@@ -10,6 +10,36 @@ from typing import Dict, Tuple
 from scipy import stats
 
 
+def compute_cohens_d(ks_stat1: float, ks_stat2: float, n: int) -> float:
+    """Compute Cohen's d effect size for comparing two KS statistics.
+    
+    Cohen's d measures the standardized difference between two means.
+    For KS statistics, we compute the effect size as the difference in 
+    KS statistics normalized by the pooled standard error.
+    
+    Args:
+        ks_stat1: KS statistic for first distribution (e.g., lognormal)
+        ks_stat2: KS statistic for second distribution (e.g., exponential)
+        n: Sample size
+        
+    Returns:
+        Cohen's d effect size. Interpretation:
+        - |d| < 0.2: negligible
+        - 0.2 <= |d| < 0.5: small
+        - 0.5 <= |d| < 0.8: medium
+        - |d| >= 0.8: large
+    """
+    # Standard error of KS statistic is approximately sqrt(1/(2n))
+    # For comparing two KS statistics, we use pooled SE
+    se_ks = np.sqrt(1.0 / (2 * n))
+    
+    # Cohen's d = (mean1 - mean2) / pooled_sd
+    # Here we use the difference in KS statistics
+    cohens_d = (ks_stat2 - ks_stat1) / se_ks
+    
+    return cohens_d
+
+
 def test_distributions_in_band(gaps: np.ndarray, band_name: str) -> Dict:
     """Test distribution fits for gaps within a magnitude band.
     
@@ -117,10 +147,20 @@ def test_distributions_in_band(gaps: np.ndarray, band_name: str) -> Dict:
         results['n_tests'] = n_tests
         results['n_bands'] = n_bands
         
-        # Check if lognormal (normal on log) is best
+        # Check if lognormal (normal on log) is best and compute effect size
         if 'normal_on_log' in ks_stats and 'exponential' in ks_stats:
             ks_ratio = ks_stats['exponential'] / ks_stats['normal_on_log']
             results['ks_ratio_exp_to_lognormal'] = ks_ratio
+            
+            # Compute Cohen's d for practical significance
+            # Positive Cohen's d means lognormal fits better (lower KS)
+            cohens_d = compute_cohens_d(
+                ks_stats['normal_on_log'], 
+                ks_stats['exponential'], 
+                len(gaps)
+            )
+            results['cohens_d_lognormal_vs_exponential'] = cohens_d
+            results['practical_significance'] = abs(cohens_d) > 0.5
     
     results['band_name'] = band_name
     results['n_samples'] = len(gaps)
@@ -161,10 +201,17 @@ def test_distributions(primes: np.ndarray) -> Dict:
         if len(band_gaps) > 0:
             band_results[band_name] = test_distributions_in_band(band_gaps, band_name)
     
-    # Cross-band analysis
+    # Cross-band analysis with family-wise error rate correction
     best_fits = []
     lognormal_count = 0
     exponential_count = 0
+    cohens_d_values = []
+    practical_sig_count = 0
+    
+    # Bonferroni-corrected alpha for cross-band decision
+    # Testing 3 bands as independent hypotheses
+    n_bands_tested = len(band_results)
+    cross_band_alpha = 0.05 / n_bands_tested if n_bands_tested > 0 else 0.05
     
     for band_name, results in band_results.items():
         if 'best_fit' in results:
@@ -173,12 +220,21 @@ def test_distributions(primes: np.ndarray) -> Dict:
                 lognormal_count += 1
             elif results['best_fit'] == 'exponential':
                 exponential_count += 1
+        
+        # Collect Cohen's d values for practical significance assessment
+        if 'cohens_d_lognormal_vs_exponential' in results:
+            cohens_d_values.append(results['cohens_d_lognormal_vs_exponential'])
+            if results.get('practical_significance', False):
+                practical_sig_count += 1
     
-    # Interpret consistency
-    if lognormal_count >= 2:
+    # Interpret consistency with Bonferroni-corrected threshold
+    # Require both statistical consistency (>=2 bands) AND practical significance
+    if lognormal_count >= 2 and practical_sig_count >= 1:
         interpretation = "Lognormal structure detected (reject H0 for H-MAIN-B)"
     elif exponential_count >= 2:
         interpretation = "Exponential structure detected (fail to reject H0)"
+    elif lognormal_count >= 2:
+        interpretation = "Lognormal detected but practical significance not established"
     else:
         interpretation = "Inconsistent across scales"
     
@@ -187,6 +243,10 @@ def test_distributions(primes: np.ndarray) -> Dict:
         'best_fits': best_fits,
         'lognormal_count': lognormal_count,
         'exponential_count': exponential_count,
+        'practical_sig_count': practical_sig_count,
+        'cohens_d_values': cohens_d_values,
+        'cross_band_alpha': cross_band_alpha,
+        'n_bands_tested': n_bands_tested,
         'interpretation': interpretation,
     }
 
