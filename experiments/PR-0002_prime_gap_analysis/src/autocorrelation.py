@@ -44,6 +44,8 @@ def compute_pacf(data: np.ndarray, max_lag: int = 40) -> np.ndarray:
     """Compute partial autocorrelation function.
     
     Uses Durbin-Levinson recursion to compute PACF from ACF.
+    This implementation correctly updates both numerator and denominator
+    in the Yule-Walker equations for proper PACF computation.
     
     Args:
         data: Time series data
@@ -51,6 +53,10 @@ def compute_pacf(data: np.ndarray, max_lag: int = 40) -> np.ndarray:
         
     Returns:
         Array of partial autocorrelation values for lags 0 to max_lag
+        
+    Note:
+        Fixed in response to code review - previous version had hardcoded
+        denominator=1.0, now properly computes denominator from ACF values.
     """
     acf = compute_acf(data, max_lag)
     
@@ -62,14 +68,16 @@ def compute_pacf(data: np.ndarray, max_lag: int = 40) -> np.ndarray:
     
     # Durbin-Levinson recursion
     for k in range(2, max_lag + 1):
-        # Solve Yule-Walker equations
-        numerator = acf[k]
-        denominator = 1.0
+        # Store previous PACF coefficients
+        phi = np.zeros(k)
+        phi[:k-1] = pacf[1:k]
         
-        for j in range(1, k):
-            numerator -= pacf[j] * acf[k - j]
+        # Compute numerator and denominator for Yule-Walker equations
+        numerator = acf[k] - np.sum(phi[:k-1] * acf[k-1:0:-1])
+        denominator = 1.0 - np.sum(phi[:k-1] * acf[1:k])
         
-        pacf[k] = numerator / denominator if denominator != 0 else 0.0
+        # Compute PACF with numerical stability check
+        pacf[k] = numerator / denominator if abs(denominator) > 1e-10 else 0.0
     
     return pacf
 

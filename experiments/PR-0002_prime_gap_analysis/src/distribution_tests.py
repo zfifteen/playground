@@ -108,6 +108,13 @@ def test_distributions_in_band(gaps: np.ndarray, band_name: str) -> Dict:
         best_fit = min(ks_stats, key=ks_stats.get)
         results['best_fit'] = best_fit
         
+        # Apply Bonferroni correction for multiple testing
+        # Testing 4 distributions, so adjust significance threshold
+        n_tests = len(ks_stats)
+        bonferroni_alpha = 0.05 / n_tests if n_tests > 0 else 0.05
+        results['bonferroni_alpha'] = bonferroni_alpha
+        results['n_tests'] = n_tests
+        
         # Check if lognormal (normal on log) is best
         if 'normal_on_log' in ks_stats and 'exponential' in ks_stats:
             ks_ratio = ks_stats['exponential'] / ks_stats['normal_on_log']

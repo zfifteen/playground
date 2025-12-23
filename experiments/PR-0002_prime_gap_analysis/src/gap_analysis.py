@@ -125,12 +125,12 @@ def test_pnt_deviation(primes: np.ndarray, n_bins: int = 100) -> Dict[str, float
         ci_lower = 0.0
         ci_upper = 0.0
     
-    # Interpret results
-    if abs(slope) < 0.001 or p_value > 0.05:
+    # Interpret results (using revised threshold of 0.005 instead of 0.001)
+    if abs(slope) < 0.005 or p_value > 0.05:
         interpretation = "Consistent with PNT (fail to reject H0)"
-    elif slope < -0.001 and p_value < 0.01:
+    elif slope < -0.005 and p_value < 0.01:
         interpretation = "Sub-logarithmic growth (reject H0, accept H1a)"
-    elif slope > 0.001 and p_value < 0.01:
+    elif slope > 0.005 and p_value < 0.01:
         interpretation = "Super-logarithmic growth (reject H0, accept H1b)"
     else:
         interpretation = "Inconclusive"
