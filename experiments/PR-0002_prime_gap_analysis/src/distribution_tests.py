@@ -10,6 +10,13 @@ from typing import Dict, Tuple
 from scipy import stats
 
 
+# Study-wide constants for Bonferroni correction
+# These should match the study design in SPEC.md
+N_DISTRIBUTIONS = 4  # normal_on_log, exponential, gamma, weibull
+N_BANDS = 3  # [10^5, 10^6), [10^6, 10^7), [10^7, 10^8)
+EFFECT_SIZE_THRESHOLD = 1.5  # KS ratio threshold for practical significance
+
+
 def compute_effect_size_ratio(ks_stat1: float, ks_stat2: float) -> float:
     """Compute effect size ratio for comparing two distribution fits.
     
@@ -45,7 +52,9 @@ def compute_practical_significance(ratio: float, threshold: float = 1.5) -> bool
     return ratio > threshold or ratio < (1.0 / threshold)
 
 
-def test_distributions_in_band(gaps: np.ndarray, band_name: str) -> Dict:
+def test_distributions_in_band(gaps: np.ndarray, band_name: str, 
+                                n_distributions: int = N_DISTRIBUTIONS,
+                                n_bands: int = N_BANDS) -> Dict:
     """Test distribution fits for gaps within a magnitude band.
     
     Tests whether log(gap) fits normal distribution (lognormal hypothesis)
@@ -144,11 +153,8 @@ def test_distributions_in_band(gaps: np.ndarray, band_name: str) -> Dict:
         results['best_fit'] = best_fit
         
         # Apply Bonferroni correction for multiple testing
-        # Use study-wide correction: 4 distributions × 3 bands = 12 total tests
-        # This is applied consistently across all bands
-        n_distributions = 4  # normal_on_log, exponential, gamma, weibull
-        n_total_bands = 3  # Total bands in study design
-        total_tests = n_distributions * n_total_bands
+        # Use study-wide correction using constants defined at module level
+        total_tests = n_distributions * n_bands
         bonferroni_alpha = 0.05 / total_tests
         results['bonferroni_alpha'] = bonferroni_alpha
         results['n_distributions_tested'] = len(ks_stats)
@@ -163,8 +169,10 @@ def test_distributions_in_band(gaps: np.ndarray, band_name: str) -> Dict:
             )
             results['ks_ratio_exp_to_lognormal'] = ks_ratio
             
-            # Practical significance: ratio > 1.5 means lognormal fits substantially better
-            results['practical_significance'] = compute_practical_significance(ks_ratio)
+            # Practical significance: ratio > EFFECT_SIZE_THRESHOLD means lognormal fits substantially better
+            results['practical_significance'] = compute_practical_significance(
+                ks_ratio, EFFECT_SIZE_THRESHOLD
+            )
     
     results['band_name'] = band_name
     results['n_samples'] = len(gaps)

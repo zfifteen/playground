@@ -10,6 +10,13 @@ from typing import Dict
 from scipy import stats
 
 
+# Significance thresholds for H-MAIN-A hypothesis testing
+# These should match the values in SPEC.md Section 2.1
+SLOPE_THRESHOLD = 0.001  # Effect size: deviations < 0.1% per log unit are negligible
+P_VALUE_REJECT = 0.01    # Threshold for rejecting H0 (stricter to reduce Type I error)
+P_VALUE_FAIL_REJECT = 0.05  # Threshold for failing to reject H0
+
+
 def compute_gap_quantities(primes: np.ndarray) -> Dict[str, np.ndarray]:
     """Compute all gap-related quantities for analysis.
     
@@ -126,23 +133,21 @@ def test_pnt_deviation(primes: np.ndarray, n_bins: int = 100) -> Dict[str, float
         ci_lower = 0.0
         ci_upper = 0.0
     
-    # Interpret results using the original threshold of 0.001
+    # Interpret results using named constants defined at module level
     # 
     # Significance thresholds explained:
-    # - Slope threshold (0.001): Effect size criterion. Deviations smaller than 0.1%
+    # - SLOPE_THRESHOLD (0.001): Effect size criterion. Deviations smaller than 0.1%
     #   per log unit of prime magnitude are considered negligible for practical purposes.
     #   This was chosen a priori based on domain knowledge.
-    # - p-value threshold (0.01 for rejection, 0.05 for fail-to-reject): Statistical 
-    #   significance criterion. The stricter 0.01 is used for rejection to reduce
-    #   false positives (Type I error), while 0.05 is the conventional threshold
-    #   for failing to reject H0.
+    # - P_VALUE_REJECT (0.01): Stricter threshold for rejection to reduce Type I error
+    # - P_VALUE_FAIL_REJECT (0.05): Conventional threshold for failing to reject H0
     # - Both criteria must be met to reject H0: this requires the effect to be both
     #   statistically significant AND practically meaningful.
-    if abs(slope) < 0.001 or p_value > 0.05:
+    if abs(slope) < SLOPE_THRESHOLD or p_value > P_VALUE_FAIL_REJECT:
         interpretation = "Consistent with PNT (fail to reject H0)"
-    elif slope < -0.001 and p_value < 0.01:
+    elif slope < -SLOPE_THRESHOLD and p_value < P_VALUE_REJECT:
         interpretation = "Sub-logarithmic growth (reject H0, accept H1a) - statistically significant but practically negligible"
-    elif slope > 0.001 and p_value < 0.01:
+    elif slope > SLOPE_THRESHOLD and p_value < P_VALUE_REJECT:
         interpretation = "Super-logarithmic growth (reject H0, accept H1b)"
     else:
         interpretation = "Inconclusive"
