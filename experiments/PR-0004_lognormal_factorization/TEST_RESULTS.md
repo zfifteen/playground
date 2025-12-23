@@ -1,0 +1,29 @@
+# Factorization Test Results
+
+This file tracks all factorization attempts using the lognormal pre-filter pipeline.
+
+## Summary
+- Pipeline: Lognormal-guided Fermat → Candidate Prefilter → Pollard Rho fallback
+- Bands: 4 hardcoded bands from empirical fits (10^5–10^9)
+- Success: Factors found within configured steps
+- Failure: NONE (not factored within limits)
+
+## Results
+
+| N | Result | max_steps | radius_scale | direction_mode | seed | Notes |
+|---|--------|-----------|--------------|----------------|------|-------|
+| 77 | 7 11 | 10000 | 1.0 | ALTERNATE | 42 | Small validation set |
+| 91 | 7 13 | 10000 | 1.0 | ALTERNATE | 42 | Small validation set |
+| 119 | 7 17 | 10000 | 1.0 | ALTERNATE | 42 | Small validation set |
+| 143 | 11 13 | 10000 | 1.0 | ALTERNATE | 42 | Small validation set |
+| 187 | 11 17 | 10000 | 1.0 | ALTERNATE | 42 | Small validation set |
+| 9999999967 | NONE | 10000 | 1.0 | ALTERNATE | 42 | Likely prime |
+| 10000000019 | NONE | 10000 | 1.0 | ALTERNATE | 42 | Likely prime |
+| 99999999859999999373 | NONE | 10000 | 1.0 | ALTERNATE | 42 | Large semiprime (~10^20), outside fitted bands |
+| 1000036000099 | 1000033 1000003 | 20000 | 1.0 | ALTERNATE | 42 | Band 1 (10^5–10^6), successful |
+
+## Notes
+- Small semiprimes (up to ~200) factored reliably.
+- Large N (>10^12) return NONE, as expected for current model and step limits.
+- All runs use default config unless specified.
+- Verification: For successful factors, p × q = N confirmed.
