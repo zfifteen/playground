@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 /* ANSI color codes for output */
 #define COLOR_GREEN "\033[0;32m"

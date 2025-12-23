@@ -178,7 +178,7 @@ void benchmark_rounding_modes(void) {
 
 /* Benchmark: Real number inputs */
 void benchmark_real_numbers(void) {
-    mpfr_t x, result, e_base;
+    mpfr_t x, result, e_base, temp;
     mpfr_prec_t prec = 256;
     int iterations = 5000;
     double start, end;
@@ -190,6 +190,7 @@ void benchmark_real_numbers(void) {
     mpfr_init2(x, prec);
     mpfr_init2(result, prec);
     mpfr_init2(e_base, prec);
+    mpfr_init2(temp, prec);
     
     /* Compute e = exp(1) for later use */
     mpfr_set_ui(e_base, 1, MPFR_RNDN);
@@ -227,8 +228,6 @@ void benchmark_real_numbers(void) {
     
     /* π^π */
     mpfr_const_pi(x, MPFR_RNDN);
-    mpfr_t temp;
-    mpfr_init2(temp, prec);
     mpfr_set(temp, x, MPFR_RNDN);
     mpfr_pow(x, temp, x, MPFR_RNDN);
     start = get_time_us();

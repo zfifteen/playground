@@ -4,7 +4,6 @@
  */
 
 #include "loglog_mpfr.h"
-#include <stdio.h>
 
 #define LOGLOG_VERSION "1.0.0"
 
