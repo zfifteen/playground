@@ -22,7 +22,7 @@ def plot_qq(gaps: np.ndarray, band: str, output: Optional[str] = None) -> None:
         band: Band identifier (e.g., '1e6_1e7')
         output: Output file path (if None, displays plot)
     """
-    from src.distribution_tests import compute_qq_data
+    from distribution_tests import compute_qq_data
     
     theoretical, sample = compute_qq_data(gaps)
     

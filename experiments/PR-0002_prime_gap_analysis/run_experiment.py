@@ -8,7 +8,6 @@ Tests hypotheses H-MAIN-A, H-MAIN-B, H-MAIN-C.
 
 import argparse
 import json
-import numpy as np
 from pathlib import Path
 import sys
 
@@ -198,7 +197,7 @@ def main():
     args = parser.parse_args()
     
     # Run experiment
-    results = run_experiment(args.scale, args.output)
+    run_experiment(args.scale, args.output)
     
     return 0
 

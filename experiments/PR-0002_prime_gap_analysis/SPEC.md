@@ -385,11 +385,9 @@ def test_pnt_normalization():
 
 ```python
 # requirements.txt
-numpy==1.24.0
-scipy==1.11.0
-matplotlib==3.7.0
-statsmodels==0.14.0
-pandas==2.0.0
+numpy>=1.24.0
+scipy>=1.11.0
+matplotlib>=3.7.0
 ```
 
 **Environment:**

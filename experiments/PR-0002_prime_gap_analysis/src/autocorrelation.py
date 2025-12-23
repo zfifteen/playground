@@ -57,6 +57,9 @@ def compute_pacf(data: np.ndarray, max_lag: int = 40) -> np.ndarray:
     Note:
         Fixed in response to code review - previous version had hardcoded
         denominator=1.0, now properly computes denominator from ACF values.
+        
+        For production use, consider using statsmodels.tsa.stattools.pacf
+        for more robust implementation with edge case handling.
     """
     acf = compute_acf(data, max_lag)
     

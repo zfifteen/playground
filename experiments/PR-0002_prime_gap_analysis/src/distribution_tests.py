@@ -6,7 +6,7 @@ Fits various distributions to log(gap) within magnitude bands.
 """
 
 import numpy as np
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 from scipy import stats
 
 
@@ -109,11 +109,13 @@ def test_distributions_in_band(gaps: np.ndarray, band_name: str) -> Dict:
         results['best_fit'] = best_fit
         
         # Apply Bonferroni correction for multiple testing
-        # Testing 4 distributions, so adjust significance threshold
+        # Testing 4 distributions across 3 bands = 12 total tests
         n_tests = len(ks_stats)
-        bonferroni_alpha = 0.05 / n_tests if n_tests > 0 else 0.05
+        n_bands = 3  # Total bands in study
+        bonferroni_alpha = 0.05 / (n_tests * n_bands) if n_tests > 0 else 0.05
         results['bonferroni_alpha'] = bonferroni_alpha
         results['n_tests'] = n_tests
+        results['n_bands'] = n_bands
         
         # Check if lognormal (normal on log) is best
         if 'normal_on_log' in ks_stats and 'exponential' in ks_stats:

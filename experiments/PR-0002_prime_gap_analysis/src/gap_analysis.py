@@ -6,7 +6,7 @@ Tests H-MAIN-A: Gap Growth Relative to PNT
 """
 
 import numpy as np
-from typing import Dict, Tuple
+from typing import Dict
 from scipy import stats
 
 
@@ -95,25 +95,26 @@ def test_pnt_deviation(primes: np.ndarray, n_bins: int = 100) -> Dict[str, float
     # Compute mean normalized gap per bin
     bin_indices = np.digitize(log_primes, bin_edges) - 1
     bin_means = []
-    valid_bins = []
+    bin_centers = []  # Use actual log-prime centers, not bin indices
     
     for i in range(n_bins):
         mask = bin_indices == i
         if np.sum(mask) > 0:
             bin_means.append(np.mean(normalized_gaps[mask]))
-            valid_bins.append(i)
+            # Use actual bin center on log-prime axis for scale-invariant regression
+            bin_centers.append((bin_edges[i] + bin_edges[i+1]) / 2)
     
-    # Linear regression: mean_normalized_gap ~ bin_index
-    if len(valid_bins) > 1:
+    # Linear regression: mean_normalized_gap ~ log(prime) [scale-invariant]
+    if len(bin_centers) > 1:
         bin_means = np.array(bin_means)
-        valid_bins = np.array(valid_bins)
+        bin_centers = np.array(bin_centers)
         
-        slope, intercept, r_value, p_value, std_err = stats.linregress(valid_bins, bin_means)
+        slope, intercept, r_value, p_value, std_err = stats.linregress(bin_centers, bin_means)
         r_squared = r_value ** 2
         
         # 95% confidence interval for slope
         from scipy.stats import t
-        df = len(valid_bins) - 2
+        df = len(bin_centers) - 2
         t_val = t.ppf(0.975, df)
         ci_margin = t_val * std_err
         ci_lower = slope - ci_margin
