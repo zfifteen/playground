@@ -354,7 +354,7 @@ def test_oeis_maxgaps():
     max_gap = np.max(gaps)
     max_gap_prime = primes[np.argmax(gaps)]
     
-    assert max_gap == 154
+    assert max_gap == 114
     assert max_gap_prime == 492113
 
 def test_array_alignment():
