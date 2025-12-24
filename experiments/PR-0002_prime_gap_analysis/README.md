@@ -121,12 +121,12 @@ plot_gap_histogram(gaps, output='results/figures/gap_hist.png')
 
 ### Phase 1: Validation (10^6 scale)
 - Prime count: 78,498
-- Max gap: 154 at prime 492,113
+- Max gap: 114 at prime 492,113
 - Mean gap/log(p): ~1.0 ± 0.05
 
 ### Phase 2: Extension (10^7 scale)
 - Prime count: 664,579
-- Max gap: 220 at prime 4,652,353
+- Max gap: 154 at prime 4,652,353
 - Cross-scale consistency check
 
 ### Phase 3: Full Scale (10^8)
