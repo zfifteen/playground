@@ -264,13 +264,23 @@ def test_distributions(primes: np.ndarray) -> Dict:
                 practical_sig_lognormal_count += 1
             if results.get('practical_sig_favors_exponential', False):
                 practical_sig_exponential_count += 1
+
+    # Count bands where distribution is BOTH the best fit AND has practical significance
+    # This alignment is required for valid cross-band detection
+    lognormal_with_practical_sig_count = sum(
+        1 for r in band_results.values()
+        if r.get('best_fit') == 'normal_on_log' and r.get('practical_sig_favors_lognormal', False)
+    )
+    exponential_with_practical_sig_count = sum(
+        1 for r in band_results.values()
+        if r.get('best_fit') == 'exponential' and r.get('practical_sig_favors_exponential', False)
+    )
     
     # Interpret consistency with Bonferroni-corrected threshold
-    # For lognormal detection: require lognormal-favoring practical significance
-    # This prevents conflating opposing effects (avoid false resonance)
-    if lognormal_count >= 2 and practical_sig_lognormal_count >= 1:
+    # Detection requires alignment: best-fit MUST match practical significance direction
+    if lognormal_with_practical_sig_count >= 2:
         interpretation = "Lognormal structure detected (reject H0 for H-MAIN-B)"
-    elif exponential_count >= 2 and practical_sig_exponential_count >= 1:
+    elif exponential_with_practical_sig_count >= 2:
         interpretation = "Exponential structure detected with practical significance (fail to reject H0)"
     elif exponential_count >= 2:
         interpretation = "Exponential structure detected (fail to reject H0)"
@@ -284,6 +294,8 @@ def test_distributions(primes: np.ndarray) -> Dict:
         'best_fits': best_fits,
         'lognormal_count': lognormal_count,
         'exponential_count': exponential_count,
+        'lognormal_with_practical_sig_count': lognormal_with_practical_sig_count,
+        'exponential_with_practical_sig_count': exponential_with_practical_sig_count,
         'practical_sig_lognormal_count': practical_sig_lognormal_count,
         'practical_sig_exponential_count': practical_sig_exponential_count,
         'ks_ratios': ks_ratios,
