@@ -123,6 +123,29 @@ def test_lognormal_detection_success():
     finally:
         distribution_tests.test_distributions_in_band = original_fn
 
+def test_practical_significance_safety():
+    """Verify compute_practical_significance raises error on invalid threshold."""
+    from distribution_tests import compute_practical_significance
+    
+    # Valid threshold > 1.0
+    res = compute_practical_significance(2.0, threshold=1.5)
+    assert res['favors_lognormal'] is True
+    assert res['favors_exponential'] is False
+    
+    # Invalid threshold < 1.0 allowing overlap (e.g. ratio=0.8, thresh=0.9)
+    # 0.8 > 0.9 is False. 0.8 < 1/0.9 (~1.11) is True.
+    # We need a case where both are true.
+    # ratio > thresh AND ratio < 1/thresh
+    # Try thresh=0.5. 1/thresh=2.0.
+    # ratio=1.0. 1.0 > 0.5 (True). 1.0 < 2.0 (True).
+    try:
+        compute_practical_significance(1.0, threshold=0.5)
+        print("FAIL: Should have raised ValueError for threshold=0.5")
+        assert False, "Did not raise ValueError for contradictory threshold"
+    except ValueError as e:
+        print(f"✓ Caught expected error: {e}")
+
 if __name__ == "__main__":
     test_cross_band_logic_fix()
     test_lognormal_detection_success()
+    test_practical_significance_safety()

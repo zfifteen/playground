@@ -14,7 +14,11 @@ from scipy import stats
 # These should match the study design in SPEC.md
 N_DISTRIBUTIONS = 4  # normal_on_log, exponential, gamma, weibull
 N_BANDS = 3  # [10^5, 10^6), [10^6, 10^7), [10^7, 10^8)
-EFFECT_SIZE_THRESHOLD = 1.5  # KS ratio threshold for practical significance
+EFFECT_SIZE_THRESHOLD = 1.5  # KS ratio threshold for practical significance (SPEC 2.2)
+# NOTE: This threshold is heuristic-based as defined in the technical specification.
+# It effectively requires the preferred distribution to have a KS statistic
+# at least 1.5x smaller (better) than the alternative. Use with caution as it
+# is not calibrated to a specific statistical power level.
 
 
 def compute_effect_size_ratio(ks_stat1: float, ks_stat2: float) -> float:
@@ -54,6 +58,17 @@ def compute_practical_significance(ratio: float, threshold: float = 1.5) -> dict
     """
     favors_lognormal = ratio > threshold
     favors_exponential = ratio < (1.0 / threshold)
+    
+    # Sanity check: Flags must be mutually exclusive
+    # Mathematically guaranteed if threshold > 1.0, but enforced for safety
+    if favors_lognormal and favors_exponential:
+        # This implies ratio > threshold AND ratio < 1/threshold
+        # Impossible for threshold > 1.0
+        raise ValueError(
+            f"Contradictory significance detected: ratio={ratio:.4f}, "
+            f"threshold={threshold}. Check if threshold <= 1.0."
+        )
+
     return {
         'significant': favors_lognormal or favors_exponential,
         'favors_lognormal': favors_lognormal,
