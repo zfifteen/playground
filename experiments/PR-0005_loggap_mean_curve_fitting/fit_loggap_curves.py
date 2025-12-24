@@ -189,7 +189,9 @@ def main():
         print(f"\n=== {path.name} ===")
         results = run_for_scale(path)
         for r in results:
-            print(f"{r.name:28s} mse={r.mse:.3e}  r2={r.r2:.4f}  params={r.params}")
+            # Format params as plain floats for cleaner output
+            params_str = "(" + ", ".join(f"{float(p):.6g}" for p in r.params) + ")"
+            print(f"{r.name:28s} mse={r.mse:.3e}  r2={r.r2:.4f}  params={params_str}")
 
 
 if __name__ == "__main__":
