@@ -106,15 +106,27 @@ def loggap_mean_curve_linear(logp: np.ndarray, a: float, b: float) -> np.ndarray
     return a + b * logp
 
 
-def loggap_mean_curve_normed(logp: np.ndarray, a: float, b: float) -> np.ndarray:
+def make_loggap_mean_curve_normed(logp_data: np.ndarray) -> Callable:
     """
-    IMPLEMENTED: Linear trend in normalized logp in [0,1]:
-    t = (logp - min_log) / (max_log - min_log)
+    Factory function to create normalized linear trend model with cached min/max.
+    
+    Pre-computes logp_min and logp_max once to avoid recalculation during curve fitting.
+    
+    Args:
+        logp_data: Array of log-prime values to compute normalization range
+        
+    Returns:
+        Function that computes: a + b * t where t ∈ [0,1]
     """
-    logp_min = np.min(logp)
-    logp_max = np.max(logp)
-    t = (logp - logp_min) / (logp_max - logp_min)
-    return a + b * t
+    logp_min = np.min(logp_data)
+    logp_max = np.max(logp_data)
+    logp_range = logp_max - logp_min
+    
+    def curve(logp: np.ndarray, a: float, b: float) -> np.ndarray:
+        t = (logp - logp_min) / logp_range
+        return a + b * t
+    
+    return curve
 
 
 def loggap_mean_curve_loglog(logp: np.ndarray, a: float, b: float) -> np.ndarray:
@@ -122,15 +134,27 @@ def loggap_mean_curve_loglog(logp: np.ndarray, a: float, b: float) -> np.ndarray
     return a + b * np.log(logp)
 
 
-def loggap_mean_curve_power_normed(logp: np.ndarray, a: float, b: float, c: float) -> np.ndarray:
+def make_loggap_mean_curve_power_normed(logp_data: np.ndarray) -> Callable:
     """
-    IMPLEMENTED: Power-law trend in normalized logp:
-    t in [0,1], curve = a + b * t**c.
+    Factory function to create power-law trend model with cached min/max.
+    
+    Pre-computes logp_min and logp_max once to avoid recalculation during curve fitting.
+    
+    Args:
+        logp_data: Array of log-prime values to compute normalization range
+        
+    Returns:
+        Function that computes: a + b * t^c where t ∈ [0,1]
     """
-    logp_min = np.min(logp)
-    logp_max = np.max(logp)
-    t = (logp - logp_min) / (logp_max - logp_min)
-    return a + b * t**c
+    logp_min = np.min(logp_data)
+    logp_max = np.max(logp_data)
+    logp_range = logp_max - logp_min
+    
+    def curve(logp: np.ndarray, a: float, b: float, c: float) -> np.ndarray:
+        t = (logp - logp_min) / logp_range
+        return a + b * t**c
+    
+    return curve
 
 
 def fit_trend(
@@ -155,11 +179,15 @@ def run_for_scale(json_path: Path) -> List[TrendFitResult]:
     """IMPLEMENTED: Run all trend fitting models for a single scale."""
     logp, means = load_bin_data(json_path)
 
+    # Create optimized normalized curve functions with pre-computed min/max
+    normed_curve = make_loggap_mean_curve_normed(logp)
+    power_normed_curve = make_loggap_mean_curve_power_normed(logp)
+
     configs = [
         ("loggap_mean_curve_linear", loggap_mean_curve_linear, (means.mean(), INITIAL_SLOPE), (-np.inf, np.inf)),
-        ("loggap_mean_curve_normed", loggap_mean_curve_normed, (means.mean(), INITIAL_SLOPE), (-np.inf, np.inf)),
+        ("loggap_mean_curve_normed", normed_curve, (means.mean(), INITIAL_SLOPE), (-np.inf, np.inf)),
         ("loggap_mean_curve_loglog", loggap_mean_curve_loglog, (means.mean(), INITIAL_SLOPE), (-np.inf, np.inf)),
-        ("loggap_mean_curve_power_normed", loggap_mean_curve_power_normed, (means.mean(), INITIAL_SLOPE, 1.0), ([-np.inf, -np.inf, 0.01], [np.inf, np.inf, 10.0])),
+        ("loggap_mean_curve_power_normed", power_normed_curve, (means.mean(), INITIAL_SLOPE, 1.0), ([-np.inf, -np.inf, 0.01], [np.inf, np.inf, 10.0])),
     ]
 
     results: List[TrendFitResult] = []
