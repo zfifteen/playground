@@ -275,24 +275,22 @@ def test_distributions(primes: np.ndarray) -> Dict:
         if 'ks_ratio_exp_to_lognormal' in results:
             ks_ratios.append(results['ks_ratio_exp_to_lognormal'])
             
-            # STRICT TRACKING: Only count practical significance if it aligns with the best fit.
-            # This prevents "phantom resonance" where a distribution "claims" significance
-            # despite not being the best fit (e.g., Gamma wins, but Lognormal > Exponential).
+            # Track practical significance favoring lognormal/exponential independently.
+            # This allows for binary comparison evidence even if a third distribution
+            # (like Gamma) fits better than both.
             if results.get('practical_sig_favors_lognormal', False):
-                if results.get('best_fit') == 'normal_on_log':
-                    practical_sig_lognormal_count += 1
-                    
+                practical_sig_lognormal_count += 1
             if results.get('practical_sig_favors_exponential', False):
-                if results.get('best_fit') == 'exponential':
-                    practical_sig_exponential_count += 1
+                practical_sig_exponential_count += 1
 
     # Interpret consistency with Bonferroni-corrected threshold
-    # Detection requires alignment: best-fit MUST match practical significance direction
-    # We now check the strict counters directly.
-    if practical_sig_lognormal_count >= 2:
+    # Detection requires alignment: require lognormal as best fit OR clear practical significance
+    if lognormal_count >= 2 and practical_sig_lognormal_count >= 1:
         interpretation = "Lognormal structure detected (reject H0 for H-MAIN-B)"
-    elif practical_sig_exponential_count >= 2:
+    elif exponential_count >= 2 and practical_sig_exponential_count >= 1:
         interpretation = "Exponential structure detected with practical significance (fail to reject H0)"
+    elif practical_sig_lognormal_count >= 2:
+        interpretation = "Lognormal structure detected via practical significance (marginal best fit)"
     elif exponential_count >= 2:
         interpretation = "Exponential structure detected (fail to reject H0)"
     elif lognormal_count >= 2:
