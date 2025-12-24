@@ -114,7 +114,7 @@ def create_default_model_store() -> ModelStore:
     """
     bands = [
         # Band 1: 10^5 to 10^6
-        # From results-10-5.json: shape=1.2867, scale=0.0002415, ks=0.0573
+        # From results-10-6.json: shape=1.2867, scale=0.0002415, ks=0.0573
         Band(
             p_min=10**5,
             p_max=10**6,
