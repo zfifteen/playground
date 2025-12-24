@@ -13,7 +13,7 @@ from prefilter import (
     pollard_rho,
     factor_with_candidate_prefilter
 )
-from model import create_default_model_store, Band
+from model import create_default_model_store
 from config import SearchPolicyConfig
 
 
