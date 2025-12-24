@@ -252,57 +252,65 @@ def test_distributions(primes: np.ndarray) -> Dict:
     # Track directional practical significance separately to avoid
     # conflating lognormal-favoring and exponential-favoring effects
     best_fits = []
-    lognormal_count = 0
-    exponential_count = 0
+    distribution_counts = {}
     ks_ratios = []
-    practical_sig_lognormal_count = 0  # Count only lognormal-favoring
-    practical_sig_exponential_count = 0  # Count only exponential-favoring
+    practical_sig_lognormal_count = 0
+    practical_sig_exponential_count = 0
     
     # Bonferroni-corrected alpha for cross-band decision
-    # Testing 3 bands as independent hypotheses
     n_bands_tested = len(band_results)
     cross_band_alpha = 0.05 / n_bands_tested if n_bands_tested > 0 else 0.05
     
     for band_name, results in band_results.items():
         if 'best_fit' in results:
-            best_fits.append(results['best_fit'])
-            if results['best_fit'] == 'normal_on_log':
-                lognormal_count += 1
-            elif results['best_fit'] == 'exponential':
-                exponential_count += 1
+            bf = results['best_fit']
+            best_fits.append(bf)
+            distribution_counts[bf] = distribution_counts.get(bf, 0) + 1
         
         # Collect KS ratio values and directional practical significance
         if 'ks_ratio_exp_to_lognormal' in results:
             ks_ratios.append(results['ks_ratio_exp_to_lognormal'])
-            
-            # Track practical significance favoring lognormal/exponential independently.
-            # This allows for binary comparison evidence even if a third distribution
-            # (like Gamma) fits better than both.
             if results.get('practical_sig_favors_lognormal', False):
                 practical_sig_lognormal_count += 1
             if results.get('practical_sig_favors_exponential', False):
                 practical_sig_exponential_count += 1
 
-    # Interpret consistency with Bonferroni-corrected threshold
-    # Detection requires alignment: require lognormal as best fit OR clear practical significance
-    if lognormal_count >= 2 and practical_sig_lognormal_count >= 1:
-        interpretation = "Lognormal structure detected (reject H0 for H-MAIN-B)"
-    elif exponential_count >= 2 and practical_sig_exponential_count >= 1:
-        interpretation = "Exponential structure detected with practical significance (fail to reject H0)"
-    elif practical_sig_lognormal_count >= 2:
-        interpretation = "Lognormal structure detected via practical significance (marginal best fit)"
-    elif exponential_count >= 2:
-        interpretation = "Exponential structure detected (fail to reject H0)"
-    elif lognormal_count >= 2:
-        interpretation = "Lognormal detected but practical significance not established"
+    # Primary evidence: Identify majority winner in best-fit (>= 2 bands)
+    majority_winner = None
+    for dist, count in distribution_counts.items():
+        if count >= 2:
+            majority_winner = dist
+            break
+
+    # Interpretation logic based on majority best-fit and practical significance
+    if majority_winner == 'normal_on_log':
+        if practical_sig_lognormal_count >= 1:
+            interpretation = "Lognormal structure detected (reject H0 for H-MAIN-B)"
+        else:
+            interpretation = "Lognormal detected but practical significance not established"
+    elif majority_winner == 'exponential':
+        if practical_sig_exponential_count >= 1:
+            interpretation = "Exponential structure detected with practical significance (fail to reject H0)"
+        else:
+            interpretation = "Exponential structure detected (fail to reject H0)"
+    elif majority_winner:
+        # Gamma, Weibull, etc. won the majority
+        interpretation = f"{majority_winner.replace('_on_log', '').capitalize()} structure detected (contradicts H-MAIN-B)"
     else:
-        interpretation = "Inconsistent across scales"
+        # No majority in best-fit (e.g., 1 Lognormal, 1 Exponential, 1 Gamma)
+        # Fall back to practical significance if it's overwhelming (>= 2 bands)
+        if practical_sig_lognormal_count >= 2:
+            interpretation = "Lognormal favored over exponential (marginal best-fit evidence)"
+        elif practical_sig_exponential_count >= 2:
+            interpretation = "Exponential favored over lognormal (marginal best-fit evidence)"
+        else:
+            interpretation = "Inconsistent across scales"
     
     return {
         'band_results': band_results,
         'best_fits': best_fits,
-        'lognormal_count': lognormal_count,
-        'exponential_count': exponential_count,
+        'lognormal_count': distribution_counts.get('normal_on_log', 0),
+        'exponential_count': distribution_counts.get('exponential', 0),
         'practical_sig_lognormal_count': practical_sig_lognormal_count,
         'practical_sig_exponential_count': practical_sig_exponential_count,
         'ks_ratios': ks_ratios,
