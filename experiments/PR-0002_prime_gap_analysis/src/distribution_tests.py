@@ -274,28 +274,24 @@ def test_distributions(primes: np.ndarray) -> Dict:
         # Collect KS ratio values and directional practical significance
         if 'ks_ratio_exp_to_lognormal' in results:
             ks_ratios.append(results['ks_ratio_exp_to_lognormal'])
-            # Track directional practical significance separately
+            
+            # STRICT TRACKING: Only count practical significance if it aligns with the best fit.
+            # This prevents "phantom resonance" where a distribution "claims" significance
+            # despite not being the best fit (e.g., Gamma wins, but Lognormal > Exponential).
             if results.get('practical_sig_favors_lognormal', False):
-                practical_sig_lognormal_count += 1
+                if results.get('best_fit') == 'normal_on_log':
+                    practical_sig_lognormal_count += 1
+                    
             if results.get('practical_sig_favors_exponential', False):
-                practical_sig_exponential_count += 1
+                if results.get('best_fit') == 'exponential':
+                    practical_sig_exponential_count += 1
 
-    # Count bands where distribution is BOTH the best fit AND has practical significance
-    # This alignment is required for valid cross-band detection
-    lognormal_with_practical_sig_count = sum(
-        1 for r in band_results.values()
-        if r.get('best_fit') == 'normal_on_log' and r.get('practical_sig_favors_lognormal', False)
-    )
-    exponential_with_practical_sig_count = sum(
-        1 for r in band_results.values()
-        if r.get('best_fit') == 'exponential' and r.get('practical_sig_favors_exponential', False)
-    )
-    
     # Interpret consistency with Bonferroni-corrected threshold
     # Detection requires alignment: best-fit MUST match practical significance direction
-    if lognormal_with_practical_sig_count >= 2:
+    # We now check the strict counters directly.
+    if practical_sig_lognormal_count >= 2:
         interpretation = "Lognormal structure detected (reject H0 for H-MAIN-B)"
-    elif exponential_with_practical_sig_count >= 2:
+    elif practical_sig_exponential_count >= 2:
         interpretation = "Exponential structure detected with practical significance (fail to reject H0)"
     elif exponential_count >= 2:
         interpretation = "Exponential structure detected (fail to reject H0)"
@@ -309,8 +305,6 @@ def test_distributions(primes: np.ndarray) -> Dict:
         'best_fits': best_fits,
         'lognormal_count': lognormal_count,
         'exponential_count': exponential_count,
-        'lognormal_with_practical_sig_count': lognormal_with_practical_sig_count,
-        'exponential_with_practical_sig_count': exponential_with_practical_sig_count,
         'practical_sig_lognormal_count': practical_sig_lognormal_count,
         'practical_sig_exponential_count': practical_sig_exponential_count,
         'ks_ratios': ks_ratios,
