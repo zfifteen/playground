@@ -66,10 +66,18 @@ See `results/benchmark_summary.md` for timings (~1.7-32s, stable at large scales
 | Scale | Gaps | ΔBIC | Winner |
 |-------|------|------|--------|
 | 10^5  | 7335 | +20 | Lognormal |
-| ...   | ...  | ...  | ... |
-| 10^11 | 34542| +20 | Lognormal |
-| 10^12 | 31726| -13 | Exponential |
-| ...   | ...  | ...  | ... |
+| 10^6  | 61621 | +20 | Lognormal |
+| 10^7  | 530249 | +20 | Lognormal |
+| 10^8  | 4652642 | +20 | Lognormal |
+| 10^9  | 4213093 | +20 | Lognormal |
+| 10^10 | 380429 | +20 | Lognormal |
+| 10^11 | 34542 | +20.5 | Lognormal |
+| 10^12 | 31726 | -12.7 | Exponential |
+| 10^13 | 5883 | -15 | Exponential |
+| 10^14 | 5391 | -15 | Exponential |
+| 10^15 | 5011 | -15 | Exponential |
+| 10^16 | 5224 | -15 | Exponential |
+| 10^17 | 5592 | -15 | Exponential |
 | 10^18 | 6288 | -15 | Exponential |
 
 ## Crossover Phenomenon
