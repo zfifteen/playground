@@ -5,7 +5,7 @@ This experiment tests the claim that prime gaps in log-space are better modeled 
 ## Overview
 
 The experiment:
-1. Generates primes in specified disjoint ranges.
+1. Generates primes in specified disjoint ranges (up to 10^18 using primesieve for efficiency).
 2. Bands the primes by magnitude (log-spaced).
 3. Extracts consecutive gaps within each band.
 4. Fits both Exponential and Lognormal distributions to a training subset (70%).
@@ -22,6 +22,13 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
+For large prime ranges (e.g., up to 10^18), install primesieve:
+
+```bash
+brew install primesieve  # macOS with Homebrew
+# Or download from https://primesieve.org/
+```
+
 ### Execution
 
 Run the experiment with default settings:
@@ -35,6 +42,14 @@ Customize ranges and output:
 ```bash
 python run_experiment.py --ranges "1e7:2e7,2e7:3e7" --output results_custom/ --seed 123
 ```
+
+For large ranges, use primesieve:
+
+```bash
+python run_experiment.py --ranges "1e16:1e17" --prime-source primesieve --output results_large/
+```
+
+Note: Use --prime-source primesieve for ranges > 10^10 to leverage optimized prime generation. Default is segmented sieve for smaller ranges.
 
 ### Output
 
