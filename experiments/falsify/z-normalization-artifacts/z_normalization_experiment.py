@@ -23,9 +23,9 @@ warnings.filterwarnings("ignore")
 np.random.seed(42)
 
 # Constants
-M = 100  # Number of Monte Carlo replicates (reduced for testing)
+M = 50  # Number of Monte Carlo replicates (testing with smaller M first)
 SAMPLE_SIZES = [100, 500, 1000, 5000, 10000]
-DISTRIBUTIONS = ["gaussian", "uniform", "poisson", "lognormal"]
+DISTRIBUTIONS = ["gaussian", "uniform", "poisson", "lognormal", "pareto", "geometric"]
 MAX_LAGS = 20
 
 
@@ -50,6 +50,12 @@ class ZNormalizationExperiment:
             return np.random.poisson(5, n).astype(float)
         elif distribution == "lognormal":
             return np.random.lognormal(0, 1, n)
+        elif distribution == "pareto":
+            # Pareto distribution with shape parameter α=2 (heavy-tailed)
+            return np.random.pareto(2, n)
+        elif distribution == "geometric":
+            # Geometric distribution (discrete, gap-like)
+            return np.random.geometric(0.1, n).astype(float)
         else:
             raise ValueError(f"Unknown distribution: {distribution}")
 
@@ -63,6 +69,33 @@ class ZNormalizationExperiment:
         acf_vals = acf(data, nlags=nlags, fft=False)
         return np.array(acf_vals)
 
+    def compute_bias_corrected_acf(
+        self, data: np.ndarray, nlags: int = MAX_LAGS
+    ) -> np.ndarray:
+        """Compute bias-corrected autocorrelation function.
+
+        Uses the Bartlett correction: divide by (N - k) instead of N for lag k.
+        This reduces finite-sample bias, especially for small N.
+        """
+        n = len(data)
+        acf_vals = np.zeros(nlags + 1)
+
+        # Compute mean and variance
+        mean = np.mean(data)
+        var = np.var(data, ddof=0)  # Population variance
+
+        # Compute ACF with bias correction
+        for k in range(nlags + 1):
+            if k == 0:
+                acf_vals[k] = 1.0
+            else:
+                # Bias-corrected estimator: divide by (n - k)
+                numerator = np.sum((data[:-k] - mean) * (data[k:] - mean))
+                denominator = (n - k) * var
+                acf_vals[k] = numerator / denominator if denominator != 0 else 0
+
+        return acf_vals
+
     def run_single_replicate(self, distribution: str, n: int) -> Dict[str, float]:
         """Run a single Monte Carlo replicate."""
         # Generate i.i.d. data
@@ -71,13 +104,15 @@ class ZNormalizationExperiment:
         # Z-normalize
         Z = self.z_normalize(X)
 
-        # Compute ACF
-        acf_vals = self.compute_acf(Z, nlags=MAX_LAGS)
+        # Compute both standard and bias-corrected ACF
+        acf_standard = self.compute_acf(Z, nlags=MAX_LAGS)
+        acf_corrected = self.compute_bias_corrected_acf(Z, nlags=MAX_LAGS)
 
-        # Return results
-        result = {"acf1": acf_vals[1]}
+        # Return results (using standard ACF for main analysis, corrected for comparison)
+        result = {"acf1_standard": acf_standard[1], "acf1_corrected": acf_corrected[1]}
         for k in range(2, MAX_LAGS + 1):
-            result[f"acf{k}"] = acf_vals[k]
+            result[f"acf{k}_standard"] = acf_standard[k]
+            result[f"acf{k}_corrected"] = acf_corrected[k]
 
         return result
 
@@ -87,10 +122,11 @@ class ZNormalizationExperiment:
         """Run Monte Carlo simulation for given distribution and sample size."""
         print(f"Running {m} replicates for {distribution}, N={n}")
 
-        # Storage for results
-        acf_lists: Dict[str, List[float]] = {
-            f"acf{k}": [] for k in range(1, MAX_LAGS + 1)
-        }
+        # Storage for results (both standard and bias-corrected ACF)
+        acf_lists: Dict[str, List[float]] = {}
+        for k in range(1, MAX_LAGS + 1):
+            acf_lists[f"acf{k}_standard"] = []
+            acf_lists[f"acf{k}_corrected"] = []
 
         for replicate in range(m):
             if replicate % 100 == 0:
@@ -144,24 +180,32 @@ class ZNormalizationExperiment:
                 # Run Monte Carlo
                 acf_data = self.run_monte_carlo(distribution, n)
 
-                # Compute statistics for each lag
+                # Compute statistics for each lag (both standard and corrected)
                 stats_results = {}
                 for lag in range(1, MAX_LAGS + 1):
-                    key = f"acf{lag}"
-                    stats_results[key] = self.compute_statistics(acf_data[key])
+                    key_standard = f"acf{lag}_standard"
+                    key_corrected = f"acf{lag}_corrected"
+                    stats_results[key_standard] = self.compute_statistics(
+                        acf_data[key_standard]
+                    )
+                    stats_results[key_corrected] = self.compute_statistics(
+                        acf_data[key_corrected]
+                    )
 
                 # Store results
                 key = (distribution, n)
                 self.results[key] = {"acf_data": acf_data, "statistics": stats_results}
 
-                # Store ACF decay data for plotting
+                # Store ACF decay data for plotting (using standard ACF for main plots)
                 self.acf_decay_data[key] = {
                     "lags": list(range(1, MAX_LAGS + 1)),
                     "mean_acf": [
-                        stats_results[f"acf{k}"]["mean"] for k in range(1, MAX_LAGS + 1)
+                        stats_results[f"acf{k}_standard"]["mean"]
+                        for k in range(1, MAX_LAGS + 1)
                     ],
                     "se_acf": [
-                        stats_results[f"acf{k}"]["se"] for k in range(1, MAX_LAGS + 1)
+                        stats_results[f"acf{k}_standard"]["se"]
+                        for k in range(1, MAX_LAGS + 1)
                     ],
                 }
 
@@ -185,21 +229,25 @@ class ZNormalizationExperiment:
         print(f"Results saved to {self.output_dir}")
 
     def create_summary_table(self):
-        """Create a summary table of ACF(1) results."""
+        """Create a summary table of ACF(1) results for both standard and bias-corrected estimators."""
         rows = []
         for distribution in DISTRIBUTIONS:
             for n in SAMPLE_SIZES:
                 key = (distribution, n)
-                stats_acf1 = self.results[key]["statistics"]["acf1"]
+                stats_standard = self.results[key]["statistics"]["acf1_standard"]
+                stats_corrected = self.results[key]["statistics"]["acf1_corrected"]
 
                 row = {
                     "Distribution": distribution.capitalize(),
                     "N": n,
-                    "Mean_ACF1": round(stats_acf1["mean"], 4),
-                    "SE": round(stats_acf1["se"], 4),
-                    "t_stat": round(stats_acf1["t_stat"], 4),
-                    "p_value": round(stats_acf1["p_value"], 6),
-                    "Cohens_d": round(stats_acf1["cohens_d"], 4),
+                    "Mean_ACF1_Standard": round(stats_standard["mean"], 4),
+                    "SE_Standard": round(stats_standard["se"], 4),
+                    "Mean_ACF1_Corrected": round(stats_corrected["mean"], 4),
+                    "SE_Corrected": round(stats_corrected["se"], 4),
+                    "t_stat_standard": round(stats_standard["t_stat"], 4),
+                    "p_value_standard": round(stats_standard["p_value"], 6),
+                    "t_stat_corrected": round(stats_corrected["t_stat"], 4),
+                    "p_value_corrected": round(stats_corrected["p_value"], 6),
                 }
                 rows.append(row)
 
@@ -239,7 +287,7 @@ class ZNormalizationExperiment:
 
             for n in SAMPLE_SIZES:
                 key = (distribution, n)
-                stats_acf1 = self.results[key]["statistics"]["acf1"]
+                stats_acf1 = self.results[key]["statistics"]["acf1_standard"]
                 n_values.append(n)
                 mean_acf1.append(stats_acf1["mean"])
                 se_values.append(stats_acf1["se"])
@@ -270,7 +318,7 @@ class ZNormalizationExperiment:
 
     def plot_acf_decay(self):
         """Plot ACF decay for different lags and distributions."""
-        fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+        fig, axes = plt.subplots(3, 2, figsize=(12, 12))
         axes = axes.flatten()
 
         for idx, distribution in enumerate(DISTRIBUTIONS):
@@ -308,7 +356,7 @@ class ZNormalizationExperiment:
 
     def plot_acf1_distribution(self):
         """Plot histogram of ACF(1) values across replicates."""
-        fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+        fig, axes = plt.subplots(3, 2, figsize=(12, 12))
         axes = axes.flatten()
 
         for idx, distribution in enumerate(DISTRIBUTIONS):
@@ -316,9 +364,9 @@ class ZNormalizationExperiment:
 
             # Use N=1000 for the histogram
             key = (distribution, 1000)
-            acf1_values = self.results[key]["acf_data"]["acf1"]
+            acf1_values = self.results[key]["acf_data"]["acf1_standard"]
 
-            ax.hist(acf1_values, bins=50, alpha=0.7, edgecolor="black")
+            ax.hist(acf1_values, bins=30, alpha=0.7, edgecolor="black")
             ax.axvline(
                 np.mean(acf1_values),
                 color="red",
