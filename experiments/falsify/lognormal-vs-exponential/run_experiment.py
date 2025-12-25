@@ -84,7 +84,7 @@ class PrimeGenerator:
             cmd = ["primesieve", str(start), str(end), "--print"]
             result = subprocess.run(cmd, check=True, capture_output=True, text=True)
             primes_str = result.stdout.strip().split("\n")
-            primes = np.array([int(p) for p in primes_str if p], dtype=np.int64)
+            primes = np.array([int(p) for p in primes_str if p], dtype=object)
             return primes
         elif source == "python":
             # Use Python generator: estimate count, generate sequentially, filter to range
@@ -104,7 +104,7 @@ class PrimeGenerator:
                     break
                 all_primes.append(prime)
                 current = prime + 2
-            return np.array(all_primes, dtype=np.int64)
+            return np.array(all_primes, dtype=object)
         else:
             # Segmented sieve for smaller ranges
             if start < 2:
@@ -138,7 +138,7 @@ class PrimeGenerator:
                     current_start = current_end
 
             if not primes:
-                return np.array([], dtype=np.int64)
+                return np.array([], dtype=object)
 
             return np.concatenate(primes)
 
@@ -157,7 +157,7 @@ class PrimeGenerator:
         """Sieve a specific chunk using pre-computed small primes."""
         length = end - start
         if length <= 0:
-            return np.array([], dtype=np.int64)
+            return np.array([], dtype=object)
 
         is_prime = np.ones(length, dtype=bool)
 
@@ -214,8 +214,11 @@ class DistributionFitter:
         if np.any(data <= 0):
             raise ValueError("Lognormal requires positive data")
 
+        # Convert to float for log (handles large ints)
+        data_float = np.array(data, dtype=float)
+
         # MLE for lognormal: fit normal to log(data)
-        log_data = np.log(data)
+        log_data = np.log(data_float)
         mu = np.mean(log_data)
         # CRITICAL FIX: Use ddof=1 for unbiased estimator (MLE with sample correction)
         sigma = np.std(log_data, ddof=1)
@@ -229,9 +232,10 @@ class DistributionFitter:
         """Evaluate exponential fit on data."""
         (scale,) = params
         n = len(data)
+        data_float = np.array(data, dtype=float)
 
         # Log likelihood
-        log_l = np.sum(stats.expon.logpdf(data, loc=0, scale=scale))
+        log_l = np.sum(stats.expon.logpdf(data_float, loc=0, scale=scale))
 
         # CRITICAL FIX: k=1 parameter (scale only, loc=0 fixed)
         k = 1
@@ -239,7 +243,7 @@ class DistributionFitter:
         bic = k * np.log(n) - 2 * log_l
 
         # KS Test
-        ks_stat, ks_p = stats.kstest(data, "expon", args=(0, scale))
+        ks_stat, ks_p = stats.kstest(data_float, "expon", args=(0, scale))
 
         return ModelMetrics(
             name="exponential",
@@ -257,9 +261,10 @@ class DistributionFitter:
         """Evaluate lognormal fit on data."""
         s, scale = params
         n = len(data)
+        data_float = np.array(data, dtype=float)
 
         # Log likelihood
-        log_l = np.sum(stats.lognorm.logpdf(data, s=s, loc=0, scale=scale))
+        log_l = np.sum(stats.lognorm.logpdf(data_float, s=s, loc=0, scale=scale))
 
         # CRITICAL FIX: k=2 parameters (s, scale; loc=0 fixed)
         k = 2
@@ -267,7 +272,7 @@ class DistributionFitter:
         bic = k * np.log(n) - 2 * log_l
 
         # KS Test
-        ks_stat, ks_p = stats.kstest(data, "lognorm", args=(s, 0, scale))
+        ks_stat, ks_p = stats.kstest(data_float, "lognorm", args=(s, 0, scale))
 
         return ModelMetrics(
             name="lognormal",
@@ -319,9 +324,15 @@ class FalsificationExperiment:
             gap_primes = primes[:-1]
 
             # 2. Banding
-            log_min = np.log10(start)
-            log_max = np.log10(end)
-            band_edges = np.logspace(log_min, log_max, n_bands + 1)
+            if (
+                end - start < start * 0.01
+            ):  # Range is <1% of start value, use linear spacing to avoid float precision issues
+                band_edges = np.linspace(start, end, num=n_bands + 1)
+            else:
+                # Safe to use log spacing
+                log_min = np.log10(float(start))
+                log_max = np.log10(float(end))
+                band_edges = np.logspace(log_min, log_max, n_bands + 1)
 
             for i in range(n_bands):
                 band_min = band_edges[i]
@@ -435,7 +446,8 @@ class FalsificationExperiment:
 
         # Q-Q Plot (Log-space for Lognormal)
         plt.subplot(1, 2, 2)
-        stats.probplot(np.log(data), dist="norm", plot=plt)
+        data_float = np.array(data, dtype=float)
+        stats.probplot(np.log(data_float), dist="norm", plot=plt)
         plt.title("Q-Q Plot (Log-Data vs Normal)")
 
         plt.tight_layout()

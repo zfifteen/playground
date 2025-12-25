@@ -71,12 +71,11 @@ class PythonPrimeGenerator:
             return 64
 
     def lucas_prefilter(self, n: int) -> bool:
-        """Lucas pre-filter: check divisibility by small primes."""
+        """Lucas pre-filter: reject if divisible by small primes."""
         for p in self.small_primes:
             if n % p == 0:
-                if n != p:
-                    return False  # Composite
-        return True  # Passed
+                return n == p  # True only if n IS the prime itself
+        return True
 
     def is_prime_mr(self, n: int) -> bool:
         """Miller-Rabin using gmpy2."""
@@ -116,11 +115,13 @@ class PythonPrimeGenerator:
     def align_wheel30_candidate(self, candidate: int) -> int:
         """Align to nearest wheel-30 residue at or above candidate."""
         mod = candidate % 30
-        for i, r in enumerate(self.wheel_residues):
-            if mod <= r:
+        for r in self.wheel_residues:
+            if mod == r:
+                return candidate  # Already aligned
+            elif mod < r:
                 return candidate + (r - mod)
-        # Wrap around
-        return candidate + (30 - mod + 1)
+        # Wrap to next 30-block + first residue
+        return candidate + (30 - mod + self.wheel_residues[0])
 
     def next_wheel30_candidate(self, candidate: int) -> int:
         """Move to next wheel-30 candidate."""
@@ -137,8 +138,6 @@ class PythonPrimeGenerator:
     def next_prime_from(self, start: int) -> tuple[int, bool]:
         """Find next prime >= start, return (prime, is_mersenne)."""
         candidate = self.align_wheel30_candidate(max(start, 3))
-        if candidate % 2 == 0:
-            candidate += 1
 
         candidates_tested = 0
         wheel_filtered = 0
