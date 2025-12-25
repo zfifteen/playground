@@ -39,7 +39,7 @@ Our approach is to design rigorous, pre-registered experiments that can **falsif
 - Lognormal fails if exponential systematically has lower BIC in ≥2/3 of bands in any range
 - Lognormal fails if advantage disappears under robustness checks (alternative bandings, gap filters, different seeds)
 
-**Status:** Tech spec complete
+**Status:** Implementation complete
 
 ---
 
@@ -204,7 +204,7 @@ python run_experiment.py --seed 42 --ranges "1e8:1e9,1e9:1e10" --output results/
 
 | Test | Status | Tech Spec | Implementation | Results |
 |------|--------|-----------|----------------|----------|
-| Lognormal vs Exponential | Active | ✓ Complete | In progress | Pending |
+| Lognormal vs Exponential | Active | ✓ Complete | ✓ Complete | Pending |
 | Fractal Cascade | Planned | In development | Not started | Pending |
 | Autocorrelation Tests | Planned | In development | Not started | Pending |
 | Z-Normalization Artifacts | Planned | In development | Not started | Pending |
