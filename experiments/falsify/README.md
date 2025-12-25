@@ -45,7 +45,7 @@ Our approach is to design rigorous, pre-registered experiments that can **falsif
 
 ### 2. Fractal Cascade Structure
 
-**Directory:** `fractal-cascade/` (planned)
+**Directory:** `fractal-cascade-structure/`
 
 **Claim being tested:** Log-gaps exhibit recursive log-normal structure within magnitude strata, suggesting multiplicative cascade dynamics.
 
@@ -64,7 +64,7 @@ Our approach is to design rigorous, pre-registered experiments that can **falsif
 - Cascade claim fails if simple additive models can reproduce stratified log-normality with similar KS fits
 - Cascade claim fails if variance scaling doesn't follow predicted power law in ≥50% of range pairs
 
-**Status:** Spec in development
+**Status:** Implementation complete
 
 ---
 ### 3. Autocorrelation and Independence Tests
@@ -205,7 +205,7 @@ python run_experiment.py --seed 42 --ranges "1e8:1e9,1e9:1e10" --output results/
 | Test | Status | Tech Spec | Implementation | Results |
 |------|--------|-----------|----------------|----------|
 | Lognormal vs Exponential | Active | ✓ Complete | ✓ Complete | Pending |
-| Fractal Cascade | Planned | In development | Not started | Pending |
+| Fractal Cascade | Active | ✓ Complete | ✓ Complete | Pending |
 | Autocorrelation Tests | Planned | In development | Not started | Pending |
 | Z-Normalization Artifacts | Planned | In development | Not started | Pending |
 | Golden-Ratio Spectrum | Planned | In development | Not started | Pending |
