@@ -68,15 +68,17 @@ class BandResult:
 
 
 class PrimeGenerator:
-    """Generates primes using a segmented sieve."""
+    """Generates primes using a segmented sieve or Python port."""
 
     def __init__(self):
-        pass
+        from python_prime_generator import PythonPrimeGenerator
+
+        self.py_gen = PythonPrimeGenerator()
 
     def generate_range(self, start: int, end: int, source: str = "sieve") -> np.ndarray:
         """
         Generate primes in the range [start, end].
-        Uses segmented sieve for small ranges, primesieve for large (>1e10).
+        Uses segmented sieve for small ranges, primesieve for large (>1e10), python for arbitrary precision.
         """
         if source == "primesieve":
             cmd = ["primesieve", str(start), str(end), "--print"]
@@ -84,6 +86,25 @@ class PrimeGenerator:
             primes_str = result.stdout.strip().split("\n")
             primes = np.array([int(p) for p in primes_str if p], dtype=np.int64)
             return primes
+        elif source == "python":
+            # Use Python generator: estimate count, generate sequentially, filter to range
+            import math
+
+            log_start = math.log(start) if start > 1 else 1
+            estimated_count = (
+                int((end - start) / log_start) + 100
+            )  # Rough estimate with buffer
+            all_primes = []
+            current = start
+            for _ in range(estimated_count):
+                if current > end:
+                    break
+                prime, _ = self.py_gen.next_prime_from(current)
+                if prime > end:
+                    break
+                all_primes.append(prime)
+                current = prime + 2
+            return np.array(all_primes, dtype=np.int64)
         else:
             # Segmented sieve for smaller ranges
             if start < 2:
@@ -569,7 +590,7 @@ def main():
         "--prime-source",
         type=str,
         default="sieve",
-        choices=["sieve", "primesieve"],
+        choices=["sieve", "primesieve", "python"],
         help="Prime generation method",
     )
 
