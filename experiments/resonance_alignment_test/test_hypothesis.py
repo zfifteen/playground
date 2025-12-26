@@ -258,9 +258,11 @@ def kolmogorov_smirnov_test(sample1: List[float], sample2: List[float]) -> Tuple
     
     Tests if two samples come from the same distribution.
     Returns (D_statistic, p_value).
+    
+    Raises ValueError if either sample is empty.
     """
     if len(sample1) == 0 or len(sample2) == 0:
-        return (0.0, 1.0)  # No evidence of difference
+        raise ValueError("Cannot perform KS test on empty samples")
     
     # Sort samples
     s1 = sorted(sample1)
@@ -363,6 +365,15 @@ def test_logarithmic_accuracy_improvement(test_scales: List[int]) -> Dict[str, A
     known_results = [r for r in results if r.get('relative_error') is not None]
     
     if len(known_results) >= 2:
+        """
+        Fit logarithmic trend using least squares regression.
+        
+        Model: error = a * log(scale) + b
+        
+        Normal equations for least squares:
+        a = (n*sum_xy - sum_x*sum_y) / (n*sum_xx - sum_x*sum_x)
+        b = (sum_y - a*sum_x) / n
+        """
         # Fit logarithmic trend: error ~ a * log(scale) + b
         scales = [r['scale'] for r in known_results]
         errors = [r['relative_error'] for r in known_results]
@@ -377,8 +388,7 @@ def test_logarithmic_accuracy_improvement(test_scales: List[int]) -> Dict[str, A
         sum_xx = sum(x*x for x in log_scales)
         sum_xy = sum(log_scales[i]*errors[i] for i in range(n))
         
-        # a = (n*sum_xy - sum_x*sum_y) / (n*sum_xx - sum_x*sum_x)
-        # b = (sum_y - a*sum_x) / n
+        # Apply normal equations
         denom = n*sum_xx - sum_x*sum_x
         if abs(denom) > 1e-10:
             a = (n*sum_xy - sum_x*sum_y) / denom
@@ -408,11 +418,16 @@ def test_logarithmic_accuracy_improvement(test_scales: List[int]) -> Dict[str, A
     return verdict
 
 
-def test_qmc_vs_standard_sampling(N: int, num_samples: int = 1000) -> Dict[str, Any]:
+def test_qmc_vs_standard_sampling(N: int, num_samples: int = 1000, random_seed: int = 42) -> Dict[str, Any]:
     """
     IMPLEMENTED: Compare QMC sampling to standard Monte Carlo.
     
     Tests if Quasi-Monte Carlo provides better sampling for factor search.
+    
+    Args:
+        N: Number to factor/test
+        num_samples: Number of samples to generate
+        random_seed: Seed for reproducible Monte Carlo sampling
     """
     sqrt_N = math.isqrt(N)
     
@@ -420,9 +435,10 @@ def test_qmc_vs_standard_sampling(N: int, num_samples: int = 1000) -> Dict[str, 
     qmc_points = generate_sobol_sequence(dimension=1, count=num_samples)
     qmc_samples = [sqrt_N + int((p[0] - 0.5) * sqrt_N * 0.2) for p in qmc_points]
     
-    # Standard Monte Carlo sampling
-    random.seed(42)  # For reproducibility
-    mc_samples = [sqrt_N + random.randint(-int(sqrt_N * 0.1), int(sqrt_N * 0.1)) 
+    # Standard Monte Carlo sampling (use local Random instance for isolation)
+    import random as random_module
+    mc_rng = random_module.Random(random_seed)
+    mc_samples = [sqrt_N + mc_rng.randint(-int(sqrt_N * 0.1), int(sqrt_N * 0.1)) 
                   for _ in range(num_samples)]
     
     # Measure "quality": how close are samples to actual factors?
@@ -837,6 +853,7 @@ if __name__ == "__main__":
     
     import datetime
     import sys
+    import os
     
     print("="*80)
     print("Testing: Scale-Invariant Resonance Alignment in Extreme-Scale Prime Prediction")
@@ -844,7 +861,7 @@ if __name__ == "__main__":
     print(f"Start time: {datetime.datetime.now()}")
     print()
     
-    # Set random seed for reproducibility
+    # Set random seed for reproducibility (once, at module level)
     random.seed(42)
     
     try:
@@ -859,7 +876,11 @@ if __name__ == "__main__":
         findings_md = format_results_for_findings(results)
         
         # Save to file
-        findings_path = "/home/runner/work/playground/playground/experiments/resonance_alignment_test/FINDINGS.md"
+        import os
+        findings_path = os.path.join(
+            os.path.dirname(__file__), 
+            "FINDINGS.md"
+        )
         with open(findings_path, 'w') as f:
             f.write(findings_md)
         
