@@ -4,8 +4,8 @@
   "q": "10293283193129930891",
   "num_candidates": 1000000,
   "num_requested": 1000000,
-  "generation_time": 2.626105785369873,
-  "scoring_time": 1.3658695220947266,
+  "generation_time": 2.632777690887451,
+  "scoring_time": 1.3316571712493896,
   "enrichment_results": {
     "near_p_count": 8369,
     "near_q_count": 6072,

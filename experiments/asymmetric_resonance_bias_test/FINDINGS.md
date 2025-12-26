@@ -22,7 +22,7 @@ The Z5D scoring mechanism does NOT demonstrate the predicted asymmetric enrichme
 - **Unique candidates generated**: 1,000,000
 - **Generation method**: 106-bit QMC (Sobol sequences)
 - **Generation time**: 2.63s
-- **Scoring time**: 1.37s
+- **Scoring time**: 1.33s
 
 ### Enrichment Analysis
 
