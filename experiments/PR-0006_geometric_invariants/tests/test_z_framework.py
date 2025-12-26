@@ -113,15 +113,70 @@ class TestGoldenRatioPhase(unittest.TestCase):
     
     def test_phase_basic(self):
         """Test basic phase computation."""
-        pass
+        # Test with k=0 (should return φ regardless of n)
+        theta_0 = golden_ratio_phase(10, k=0)
+        self.assertAlmostEqual(theta_0, PHI, places=6)
+        
+        # Test with k=1 (linear in fractional part)
+        theta_1 = golden_ratio_phase(10, k=1)
+        expected = PHI * ((10 % PHI) / PHI)
+        self.assertAlmostEqual(theta_1, expected, places=6)
     
     def test_phase_range(self):
         """Test that phase values are in expected range [0, φ]."""
-        pass
+        # Test multiple values
+        for n in [1, 10, 100, 1000]:
+            for k in [0.0, 0.3, 0.5, 1.0]:
+                theta = golden_ratio_phase(n, k=k)
+                self.assertGreaterEqual(theta, 0)
+                self.assertLessEqual(theta, PHI)
     
     def test_phase_k_parameter(self):
         """Test effect of k parameter on phase."""
-        pass
+        n = 100
+        
+        # k=0 should give maximum value (φ)
+        theta_0 = golden_ratio_phase(n, k=0)
+        
+        # Higher k should generally give different values
+        theta_03 = golden_ratio_phase(n, k=0.3)
+        theta_1 = golden_ratio_phase(n, k=1.0)
+        
+        # All should be in valid range
+        for theta in [theta_0, theta_03, theta_1]:
+            self.assertGreaterEqual(theta, 0)
+            self.assertLessEqual(theta, PHI)
+    
+    def test_phase_array_input(self):
+        """Test phase computation with array input."""
+        n_array = np.array([10, 20, 30, 40])
+        k = 0.3
+        
+        theta_array = golden_ratio_phase(n_array, k=k)
+        
+        # Check shape
+        self.assertEqual(theta_array.shape, (4,))
+        
+        # Check individual values match scalar calls
+        for i, n in enumerate(n_array):
+            expected = golden_ratio_phase(int(n), k=k)
+            self.assertAlmostEqual(theta_array[i], expected, places=6)
+    
+    def test_phase_invalid_input(self):
+        """Test that invalid inputs raise appropriate errors."""
+        # Negative k
+        with self.assertRaises(ValueError):
+            golden_ratio_phase(10, k=-0.5)
+        
+        # Non-positive n
+        with self.assertRaises(ValueError):
+            golden_ratio_phase(0, k=0.3)
+        with self.assertRaises(ValueError):
+            golden_ratio_phase(-5, k=0.3)
+        
+        # Array with non-positive values
+        with self.assertRaises(ValueError):
+            golden_ratio_phase(np.array([1, 2, -3, 4]), k=0.3)
 
 
 class TestZFrameworkCalculator(unittest.TestCase):

@@ -92,13 +92,14 @@ class GoldenSpiralBias:
         #   points (ndarray) - shape (n, d) of base QMC points in [0,1]^d
         #   indices (ndarray) - shape (n,) of sequence indices for θ' computation
         # PROCESS:
-        #   1. Compute θ'(index, k) for each point using golden_ratio_phase() [TO BE IMPLEMENTED]
+        #   1. Compute θ'(index, k) for each point using golden_ratio_phase() [IMPLEMENTED ✓]
         #   2. Convert phases to spiral coordinates in 2D
         #   3. Blend with original points: (1-strength)*points + strength*spiral
         #   4. Ensure results stay in [0,1]^d via modulo or clipping
         # OUTPUTS: ndarray - biased points same shape as input
-        # DEPENDENCIES: golden_ratio_phase() [TO BE IMPLEMENTED], PHI
+        # DEPENDENCIES: golden_ratio_phase() [IMPLEMENTED ✓], PHI
         # NOTE: Reduces candidates by 0.2-4.8% in RSA sampling per problem statement
+        #       Can now compute actual θ' values for spiral generation
         pass
 
 

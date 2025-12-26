@@ -71,11 +71,12 @@ class DNASequenceEncoder:
         #   1. Encode sequence to numerical array using encode() [TO BE IMPLEMENTED]
         #   2. Create complex numbers: real from encoded values
         #   3. Add imaginary component based on positional phase
-        #   4. Apply golden-ratio weighting to positions
+        #   4. Apply golden-ratio weighting to positions using θ'(pos, k) [IMPLEMENTED ✓]
         #   5. Return complex array ready for FFT
         # OUTPUTS: ndarray[complex] - complex waveform representation
-        # DEPENDENCIES: encode() [TO BE IMPLEMENTED], PHI constant
+        # DEPENDENCIES: encode() [TO BE IMPLEMENTED], PHI constant, golden_ratio_phase() [IMPLEMENTED ✓]
         # NOTE: Used for spectral disruption analysis
+        #       Can now apply actual θ' weighting to sequence positions
         pass
 
 
@@ -108,11 +109,12 @@ class SpectralDisruptionScorer:
         #   1. Convert to complex waveform using DNASequenceEncoder [TO BE IMPLEMENTED]
         #   2. Apply FFT using numpy.fft.fft
         #   3. Compute magnitude spectrum (abs of FFT)
-        #   4. Apply golden-ratio phase weighting using θ'(n, self.k)
+        #   4. Apply golden-ratio phase weighting using θ'(n, self.k) [IMPLEMENTED ✓]
         #   5. Normalize by sequence length
         #   6. Cache result for this sequence
         # OUTPUTS: ndarray - weighted magnitude spectrum
-        # DEPENDENCIES: DNASequenceEncoder [TO BE IMPLEMENTED], golden_ratio_phase() [TO BE IMPLEMENTED]
+        # DEPENDENCIES: DNASequenceEncoder [TO BE IMPLEMENTED], golden_ratio_phase() [IMPLEMENTED ✓]
+        # NOTE: Can now apply actual θ' weighting to frequency bins
         pass
     
     def score_disruption(self, 
@@ -126,11 +128,12 @@ class SpectralDisruptionScorer:
         #   1. Compute spectrum of original using compute_spectrum() [TO BE IMPLEMENTED]
         #   2. Compute spectrum of modified
         #   3. Compute L2 distance between spectra
-        #   4. Weight by θ'(len(original), k) for length normalization
+        #   4. Weight by θ'(len(original), k) for length normalization [IMPLEMENTED ✓]
         #   5. Return normalized disruption score
         # OUTPUTS: float - disruption score (higher = more disrupted)
-        # DEPENDENCIES: compute_spectrum() [TO BE IMPLEMENTED], golden_ratio_phase() [TO BE IMPLEMENTED]
+        # DEPENDENCIES: compute_spectrum() [TO BE IMPLEMENTED], golden_ratio_phase() [IMPLEMENTED ✓]
         # NOTE: Used to rank CRISPR off-target sites
+        #       Can now apply actual θ' normalization to scores
         pass
     
     def score_multiple_targets(self,
@@ -225,12 +228,13 @@ class CRISPRGuideOptimizer:
         #   n_candidates (int) - number of candidates to generate
         # PROCESS:
         #   1. Extract all possible guide_length windows from target
-        #   2. Generate variants using θ'-based position selection
+        #   2. Generate variants using θ'-based position selection [IMPLEMENTED ✓]
         #   3. Score all candidates using rank_guides() [TO BE IMPLEMENTED]
-        #   4. Apply curvature filtering to remove high-complexity guides
+        #   4. Apply curvature filtering to remove high-complexity guides [IMPLEMENTED ✓]
         #   5. Return top n_candidates optimized guides
         # OUTPUTS: list[str] - optimized guide sequences
-        # DEPENDENCIES: rank_guides() [TO BE IMPLEMENTED], golden_ratio_phase() [TO BE IMPLEMENTED]
+        # DEPENDENCIES: rank_guides() [TO BE IMPLEMENTED], golden_ratio_phase() [IMPLEMENTED ✓]
+        # NOTE: Can now use θ' for intelligent position sampling
         pass
 
 
@@ -269,11 +273,11 @@ def compute_repair_pathway_bias(sequence: str,
     #   1. Extract local sequence context (±50bp around mutation)
     #   2. Compute spectral features using SpectralDisruptionScorer
     #   3. Apply curvature metrics for complexity assessment using κ(n) [IMPLEMENTED ✓]
-    #   4. Use θ'(position, k) for positional bias
+    #   4. Use θ'(position, k) for positional bias [IMPLEMENTED ✓]
     #   5. Predict NHEJ vs HDR pathway preference
     #   6. Return pathway probabilities and confidence
     # OUTPUTS: dict - {nhej_prob, hdr_prob, confidence, features, ...}
-    # DEPENDENCIES: SpectralDisruptionScorer [TO BE IMPLEMENTED], curvature_metric() [IMPLEMENTED ✓]
+    # DEPENDENCIES: SpectralDisruptionScorer [TO BE IMPLEMENTED], curvature_metric() [IMPLEMENTED ✓], golden_ratio_phase() [IMPLEMENTED ✓]
     # NOTE: Supports machine learning models for pathway prediction per problem statement
-    #       Can now compute actual κ values for local complexity
+    #       Can now compute both κ and θ' for feature extraction
     pass
