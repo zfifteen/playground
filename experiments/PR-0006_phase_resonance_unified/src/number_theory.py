@@ -314,24 +314,104 @@ def compute_snr_at_factors(n: int, true_factors: Tuple[int, int],
 
 def run_batch_analysis(semiprimes: List[Tuple[int, int, int]], 
                       theta: float = 0.0) -> Dict[str, any]:
-    # PURPOSE: Run resonance analysis on multiple semiprimes and aggregate results
-    # INPUTS:
-    #   - semiprimes (list): Output from generate_semiprimes() [IMPLEMENTED ✓]
-    #   - theta (float): Phase offset for all analyses
-    # PROCESS:
-    #   1. Initialize results collectors (lists for metrics)
-    #   2. For each (semiprime, p1, p2) in semiprimes:
-    #      a. Call scan_divisors(semiprime, theta)
-    #      b. Call detect_peaks(resonance_values)
-    #      c. Call evaluate_factor_detection(semiprime, (p1,p2), detected_peaks)
-    #      d. Call compute_snr_at_factors(semiprime, (p1,p2), resonance_values)
-    #      e. Store all metrics
-    #   3. Calculate aggregate statistics (mean, std, median for each metric)
-    #   4. Return comprehensive results dictionary
-    # OUTPUTS: Dict with aggregated metrics and individual results
-    # DEPENDENCIES: All above functions [SOME IMPLEMENTED ✓]
-    # NOTES: This is the main entry point for number theory experiments
-    pass
+    """
+    IMPLEMENTED: Run resonance analysis on multiple semiprimes and aggregate results.
+    
+    This is the main entry point for number theory experiments.
+    
+    Args:
+        semiprimes: Output from generate_semiprimes()
+        theta: Phase offset for all analyses
+    
+    Returns:
+        Dict with aggregated metrics and individual results
+    """
+    # Initialize results collectors
+    individual_results = []
+    all_precisions = []
+    all_recalls = []
+    all_f1_scores = []
+    all_snrs = []
+    all_true_positives = []
+    all_false_positives = []
+    
+    print(f"Analyzing {len(semiprimes)} semiprimes...")
+    
+    # For each (semiprime, p1, p2) in semiprimes:
+    for i, (semiprime, p1, p2) in enumerate(semiprimes):
+        # a. Call scan_divisors(semiprime, theta)
+        resonance_values = scan_divisors(semiprime, theta)
+        
+        # b. Call detect_peaks(resonance_values)
+        detected_peaks = detect_peaks(resonance_values)
+        
+        # c. Call evaluate_factor_detection(semiprime, (p1,p2), detected_peaks)
+        metrics = evaluate_factor_detection(semiprime, (p1, p2), detected_peaks)
+        
+        # d. Call compute_snr_at_factors(semiprime, (p1,p2), resonance_values)
+        snr = compute_snr_at_factors(semiprime, (p1, p2), resonance_values)
+        
+        # e. Store all metrics
+        result = {
+            'semiprime': semiprime,
+            'p1': p1,
+            'p2': p2,
+            'num_peaks': len(detected_peaks),
+            'peaks': detected_peaks[:10],  # Store first 10 peaks
+            'precision': metrics['precision'],
+            'recall': metrics['recall'],
+            'f1_score': metrics['f1_score'],
+            'snr': snr,
+            'true_positives': metrics['true_positives'],
+            'false_positives': metrics['false_positives']
+        }
+        
+        individual_results.append(result)
+        all_precisions.append(metrics['precision'])
+        all_recalls.append(metrics['recall'])
+        all_f1_scores.append(metrics['f1_score'])
+        all_snrs.append(snr)
+        all_true_positives.append(metrics['true_positives'])
+        all_false_positives.append(metrics['false_positives'])
+    
+    # Calculate aggregate statistics
+    results = {
+        'n_semiprimes': len(semiprimes),
+        'theta': theta,
+        
+        # Mean metrics
+        'mean_precision': np.mean(all_precisions),
+        'mean_recall': np.mean(all_recalls),
+        'mean_f1_score': np.mean(all_f1_scores),
+        'mean_snr': np.mean(all_snrs),
+        
+        # Std metrics
+        'std_precision': np.std(all_precisions),
+        'std_recall': np.std(all_recalls),
+        'std_f1_score': np.std(all_f1_scores),
+        'std_snr': np.std(all_snrs),
+        
+        # Median metrics
+        'median_precision': np.median(all_precisions),
+        'median_recall': np.median(all_recalls),
+        'median_f1_score': np.median(all_f1_scores),
+        'median_snr': np.median(all_snrs),
+        
+        # Totals
+        'total_true_positives': sum(all_true_positives),
+        'total_false_positives': sum(all_false_positives),
+        'success_rate': sum(1 for r in all_recalls if r > 0) / len(all_recalls),
+        
+        # Individual results
+        'individual_results': individual_results
+    }
+    
+    print(f"  Mean Precision: {results['mean_precision']:.3f}")
+    print(f"  Mean Recall:    {results['mean_recall']:.3f}")
+    print(f"  Mean F1:        {results['mean_f1_score']:.3f}")
+    print(f"  Success Rate:   {results['success_rate']:.1%}")
+    
+    return results
 
 
 def compare_to_random_baseline(semiprimes: List[Tuple[int, int, int]]) -> Dict[str, float]:
