@@ -68,127 +68,38 @@ class BandResult:
 
 
 class PrimeGenerator:
-    """Generates primes using a segmented sieve or Python port."""
+    """Generates primes using Python port (z5d)."""
 
     def __init__(self):
         from python_prime_generator import PythonPrimeGenerator
 
         self.py_gen = PythonPrimeGenerator()
 
-    def generate_range(self, start: int, end: int, source: str = "sieve") -> np.ndarray:
+    def generate_range(self, start: int, end: int) -> np.ndarray:
         """
-        Generate primes in the range [start, end].
-        Uses segmented sieve for small ranges, primesieve for large (>1e10), python for arbitrary precision.
+        Generate primes in [start, end] using z5d/python generator (sequential).
+        Estimates count via PNT approximation; generates until end.
         """
-        if source == "primesieve":
-            cmd = ["primesieve", str(start), str(end), "--print"]
-            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-            primes_str = result.stdout.strip().split("\n")
-            primes = np.array([int(p) for p in primes_str if p], dtype=object)
-            return primes
-        elif source == "python":
-            # Use Python generator: estimate count, generate sequentially, filter to range
-            import math
+        import math
 
-            log_start = math.log(start) if start > 1 else 1
-            estimated_count = (
-                int((end - start) / log_start) + 100
-            )  # Rough estimate with buffer
-            all_primes = []
-            current = start
-            for _ in range(estimated_count):
-                if current > end:
-                    break
-                prime, _ = self.py_gen.next_prime_from(current)
-                if prime > end:
-                    break
-                all_primes.append(prime)
-                current = prime + 2
-            return np.array(all_primes, dtype=object)
-        else:
-            # Segmented sieve for smaller ranges
-            if start < 2:
-                start = 2
+        if start < 2:
+            start = 2
 
-            chunk_size = 10**6
-            primes = []
+        log_start = math.log(start) if start > 1 else 1
+        estimated_count = int((end - start) / log_start) + 1000  # Buffer for accuracy
 
-            # Initial small primes for sieving
-            limit = int(np.sqrt(end)) + 1
-            small_primes = self._simple_sieve(limit)
-
-            # Process in chunks
-            current_start = start
-            with tqdm(
-                total=end - start,
-                desc=f"Generating primes {start:.1e}-{end:.1e}",
-                unit="num",
-            ) as pbar:
-                while current_start < end:
-                    current_end = min(current_start + chunk_size, end)
-                    if current_end <= current_start:
-                        break
-
-                    chunk_primes = self._segmented_sieve_chunk(
-                        current_start, current_end, small_primes
-                    )
-                    primes.append(chunk_primes)
-
-                    pbar.update(current_end - current_start)
-                    current_start = current_end
-
-            if not primes:
-                return np.array([], dtype=object)
-
-            return np.concatenate(primes)
-
-    def _simple_sieve(self, limit: int) -> np.ndarray:
-        """Standard Sieve of Eratosthenes up to limit."""
-        is_prime = np.ones(limit + 1, dtype=bool)
-        is_prime[0:2] = False
-        for i in range(2, int(np.sqrt(limit)) + 1):
-            if is_prime[i]:
-                is_prime[i * i : limit + 1 : i] = False
-        return np.nonzero(is_prime)[0]
-
-    def _segmented_sieve_chunk(
-        self, start: int, end: int, small_primes: np.ndarray
-    ) -> np.ndarray:
-        """Sieve a specific chunk using pre-computed small primes."""
-        length = end - start
-        if length <= 0:
-            return np.array([], dtype=object)
-
-        is_prime = np.ones(length, dtype=bool)
-
-        # Handle 0 and 1 if they appear in the range
-        if start == 0:
-            if length > 0:
-                is_prime[0] = False
-            if length > 1:
-                is_prime[1] = False
-        elif start == 1:
-            if length > 0:
-                is_prime[0] = False
-
-        limit = int(np.sqrt(end))
-
-        for p in small_primes:
-            if p > limit:
+        all_primes = []
+        current = start
+        for _ in range(estimated_count + 1000):  # Extra buffer
+            if current > end:
                 break
+            prime, _ = self.py_gen.next_prime_from(current)
+            if prime > end:
+                break
+            all_primes.append(prime)
+            current = prime + 2  # Next odd candidate
 
-            # Find first multiple of p >= start
-            first_multiple = (start + p - 1) // p * p
-            if first_multiple < p * p:
-                first_multiple = p * p
-
-            # Index in is_prime array
-            idx = first_multiple - start
-            if idx < length:
-                is_prime[idx::p] = False
-
-        numbers = np.arange(start, end)
-        return numbers[is_prime]
+        return np.array(all_primes, dtype=object)
 
 
 class DistributionFitter:
@@ -288,124 +199,322 @@ class DistributionFitter:
 class FalsificationExperiment:
     """Main experiment controller."""
 
-    def __init__(self, output_dir: str, seed: int = 42, prime_source: str = "sieve"):
+    def __init__(self, output_dir: str, seed: int = 42):
         self.output_dir = output_dir
         self.seed = seed
-        self.prime_source = prime_source
+        self.prime_source = "python"  # Always z5d/python
         self.rng = np.random.default_rng(seed)
         self.prime_gen = PrimeGenerator()
         self.fitter = DistributionFitter()
 
         os.makedirs(output_dir, exist_ok=True)
 
-    def run(self, ranges: List[str], n_bands: int = 6, min_gaps: int = 5000):
-        """Run the full experiment."""
-        all_results = []
+    def collect_gaps_logband(self, n0, alpha=2.0, max_gaps=10**6, tail_bias=False):
+        """
+        Collect gaps from the log-band window [n0/alpha, alpha*n0].
+        If window too large, use random start within window and generate consecutive gaps.
+        """
+        low = int(n0 / alpha)
+        high = int(alpha * n0)
+        window_size = high - low
 
-        for range_str in ranges:
-            logger.info(f"Processing range: {range_str}")
-            try:
-                start_str, end_str = range_str.split(":")
-                start, end = int(float(start_str)), int(float(end_str))
-            except ValueError:
-                logger.error(
-                    f"Invalid range format: {range_str}. Expected start:end (e.g. 1e8:1e9)"
-                )
-                continue
+        import math
 
-            # 1. Generate Primes and Gaps
-            primes = self.prime_gen.generate_range(start, end, source=self.prime_source)
-            if len(primes) < 2:
-                logger.warning(f"Not enough primes in range {range_str}")
-                continue
+        log_low = math.log(low) if low > 1 else 1
+        estimated_primes = int(window_size / log_low) + 10000
 
-            gaps = np.diff(primes)
-            # Associate gaps with the left prime
-            gap_primes = primes[:-1]
+        MAX_PRIMES_TO_GENERATE = (
+            2_000_000  # Cap to prevent long runtime; use random start if exceeded
+        )
+        MAX_GAPS_FOR_FITTING = max_gaps  # 50k
 
-            # 2. Banding
-            if (
-                end - start < start * 0.01
-            ):  # Range is <1% of start value, use linear spacing to avoid float precision issues
-                band_edges = np.linspace(start, end, num=n_bands + 1)
-            else:
-                # Safe to use log spacing
-                log_min = np.log10(float(start))
-                log_max = np.log10(float(end))
-                band_edges = np.logspace(log_min, log_max, n_bands + 1)
+        all_primes = []
+        sampling_method = "full_window"
 
-            for i in range(n_bands):
-                band_min = band_edges[i]
-                band_max = band_edges[i + 1]
+        if estimated_primes > MAX_PRIMES_TO_GENERATE:
+            # Too large: Use random starting point within window, generate consecutive
+            mean_gap = int(math.log(n0) * 2)  # Rough estimate for gap size
+            max_start_offset = max(1, window_size - MAX_PRIMES_TO_GENERATE * mean_gap)
+            start_offset = np.random.randint(0, max_start_offset)
+            start = low + start_offset
+            logger.info(
+                f"n0={n0}: Window too large ({estimated_primes} primes); using random start at {start} within [{low}, {high}]"
+            )
 
-                # Filter gaps in this band
-                mask = (gap_primes >= band_min) & (gap_primes < band_max)
-                band_gaps = gaps[mask]
+            current = start if start >= 2 else 2
+            while len(all_primes) < MAX_PRIMES_TO_GENERATE and current < high * 1.1:
+                prime, _ = self.prime_gen.py_gen.next_prime_from(current)
+                if prime > high:
+                    break
+                all_primes.append(prime)
+                current = prime + 2
+            sampling_method = "random_start"
+        else:
+            # Full window: Sequential from low
+            current = low if low >= 2 else 2
+            while len(all_primes) < estimated_primes and current < high * 1.1:
+                prime, _ = self.prime_gen.py_gen.next_prime_from(current)
+                if prime > high:
+                    break
+                all_primes.append(prime)
+                current = prime + 2
+            sampling_method = "full_window"
 
-                if len(band_gaps) < min_gaps:
-                    logger.warning(
-                        f"Band {i} ({band_min:.1e}-{band_max:.1e}) has insufficient gaps: {len(band_gaps)}"
+        if len(all_primes) < 2:
+            logger.warning(f"Insufficient primes for n0={n0}")
+            return np.array([]), {}
+
+        gaps = np.diff(all_primes).astype(float)
+        gaps = gaps[gaps > 0]
+        original_n = len(gaps)
+        subsampled = False
+        if original_n > MAX_GAPS_FOR_FITTING:
+            selected_indices = np.sort(
+                np.random.choice(original_n, MAX_GAPS_FOR_FITTING, replace=False)
+            )
+            gaps = gaps[selected_indices]
+            subsampled = True
+            logger.info(f"n0={n0}: Subsampled from {original_n} to {len(gaps)} gaps")
+
+        meta = {
+            "n0": n0,
+            "alpha": alpha,
+            "low": low,
+            "high": high,
+            "log_width": 2 * np.log10(alpha),
+            "realized_N": len(gaps),
+            "original_N": original_n,
+            "subsampled": subsampled,
+            "tail_bias": tail_bias,
+            "sampling_method": sampling_method,
+            "mean_gap": np.mean(gaps) if len(gaps) > 0 else 0,
+            "generated_primes": len(all_primes),
+        }
+        return gaps, meta
+
+    def run(
+        self,
+        ranges=None,
+        n_bands=6,
+        min_gaps=5000,
+        alpha=2.0,
+        max_gaps=10**6,
+        shuffle=False,
+        free_loc=True,
+        tail_bias=False,
+        alphas=None,
+        mode="logband",
+    ):
+        """
+        Run the full experiment.
+        mode: 'legacy' for original, 'logband' for fixed log-band.
+        If alphas is list, run for each and aggregate.
+        """
+        from scipy.stats import expon, lognorm
+        import warnings
+
+        if mode == "legacy":
+            all_results = []
+
+            for range_str in ranges:
+                logger.info(f"Processing legacy range: {range_str}")
+                try:
+                    start_str, end_str = range_str.split(":")
+                    start, end = int(float(start_str)), int(float(end_str))
+                except ValueError:
+                    logger.error(
+                        f"Invalid range format: {range_str}. Expected start:end (e.g. 1e8:1e9)"
                     )
                     continue
 
-                logger.info(f"  Band {i}: {len(band_gaps)} gaps")
+                primes = self.prime_gen.generate_range(start, end)
+                if len(primes) < 2:
+                    logger.warning(f"Not enough primes in range {range_str}")
+                    continue
 
-                # 3. Train/Test Split
-                # NOTE: Shuffling destroys spatial correlation in gaps.
-                # This may not be appropriate for all analyses, but is used here
-                # to create independent train/test sets as specified in TECH-SPEC.
-                indices = np.arange(len(band_gaps))
-                self.rng.shuffle(indices)
-                shuffled_gaps = band_gaps[indices]
+                gaps = np.diff(primes)
+                gap_primes = primes[:-1]
 
-                split_idx = int(0.7 * len(shuffled_gaps))
-                train_gaps = shuffled_gaps[:split_idx]
-                test_gaps = shuffled_gaps[split_idx:]
+                if end - start < start * 0.01:
+                    band_edges = np.linspace(start, end, num=n_bands + 1)
+                else:
+                    log_min = np.log10(float(start))
+                    log_max = np.log10(float(end))
+                    band_edges = np.logspace(log_min, log_max, n_bands + 1)
 
-                # 4. Fit Models (on Train)
-                exp_params = self.fitter.fit_exponential(train_gaps)
-                ln_params = self.fitter.fit_lognormal(train_gaps)
+                for i in range(n_bands):
+                    band_min = band_edges[i]
+                    band_max = band_edges[i + 1]
+                    mask = (gap_primes >= band_min) & (gap_primes < band_max)
+                    band_gaps = gaps[mask]
 
-                # 5. Evaluate Models (on Test)
-                exp_metrics = self.fitter.evaluate_exponential(test_gaps, exp_params)
-                ln_metrics = self.fitter.evaluate_lognormal(test_gaps, ln_params)
+                    if len(band_gaps) < min_gaps:
+                        logger.warning(
+                            f"Band {i} ({band_min:.1e}-{band_max:.1e}) has insufficient gaps: {len(band_gaps)}"
+                        )
+                        continue
 
-                # 6. Compare
-                delta_bic = (
-                    exp_metrics.bic - ln_metrics.bic
-                )  # Positive means exp worse -> Lognormal wins
-                delta_logl = ln_metrics.log_likelihood - exp_metrics.log_likelihood
+                    logger.info(f"  Band {i}: {len(band_gaps)} gaps")
 
-                winner = "ambiguous"
-                if delta_bic >= 10:
-                    winner = "lognormal"
-                elif delta_bic <= -10:
-                    winner = "exponential"
+                    indices = np.arange(len(band_gaps))
+                    self.rng.shuffle(indices)
+                    shuffled_gaps = band_gaps[indices]
 
-                result = BandResult(
-                    range_id=range_str,
-                    band_id=i,
-                    p_min=band_min,
-                    p_max=band_max,
-                    n_train=len(train_gaps),
-                    n_test=len(test_gaps),
-                    exp_metrics=exp_metrics,
-                    ln_metrics=ln_metrics,
-                    winner=winner,
-                    delta_bic=delta_bic,
-                    delta_logl=delta_logl,
-                )
-                all_results.append(result)
+                    split_idx = int(0.7 * len(shuffled_gaps))
+                    train_gaps = shuffled_gaps[:split_idx]
+                    test_gaps = shuffled_gaps[split_idx:]
 
-                # Plotting for first band of each range
-                if i == 0:
-                    self._plot_band_fit(
-                        test_gaps, exp_params, ln_params, result, range_str, i
+                    exp_params = self.fitter.fit_exponential(train_gaps)
+                    ln_params = self.fitter.fit_lognormal(train_gaps)
+
+                    exp_metrics = self.fitter.evaluate_exponential(
+                        test_gaps, exp_params
+                    )
+                    ln_metrics = self.fitter.evaluate_lognormal(test_gaps, ln_params)
+
+                    delta_bic = exp_metrics.bic - ln_metrics.bic
+                    delta_logl = ln_metrics.log_likelihood - exp_metrics.log_likelihood
+
+                    winner = "ambiguous"
+                    if delta_bic >= 10:
+                        winner = "lognormal"
+                    elif delta_bic <= -10:
+                        winner = "exponential"
+
+                    result = BandResult(
+                        range_id=range_str,
+                        band_id=i,
+                        p_min=band_min,
+                        p_max=band_max,
+                        n_train=len(train_gaps),
+                        n_test=len(test_gaps),
+                        exp_metrics=exp_metrics,
+                        ln_metrics=ln_metrics,
+                        winner=winner,
+                        delta_bic=delta_bic,
+                        delta_logl=delta_logl,
+                    )
+                    all_results.append(result)
+
+                    if i == 0:
+                        self._plot_band_fit(
+                            test_gaps, exp_params, ln_params, result, range_str, i
+                        )
+
+            self._save_results(all_results)
+            self._generate_report(all_results)
+            return all_results
+
+        elif mode == "logband":
+            SCALES = [10**k for k in range(2, 19)]  # 1e2 to 1e18
+            all_results = {}
+            if alphas is None:
+                alphas = [alpha]
+
+            for a in alphas:
+                logger.info(f"Running logband with alpha={a}")
+                res = []
+                for n0 in SCALES:
+                    gaps, meta = self.collect_gaps_logband(
+                        n0, alpha=a, max_gaps=max_gaps, tail_bias=tail_bias
+                    )
+                    if len(gaps) < 1000:
+                        logger.warning(f"n0={n0}: Only {len(gaps)} gaps; skipping")
+                        continue
+
+                    N = len(gaps)
+                    consecutive_gaps_used = (
+                        meta["generated_primes"] - 1
+                    )  # Gaps from consecutive primes
+                    if shuffle:
+                        indices = np.arange(N)
+                        self.rng.shuffle(indices)
+                        gaps = gaps[indices]
+                        logger.info(f"n0={n0}: Shuffled gaps")
+
+                    split_idx = int(0.7 * N)
+                    train_gaps = gaps[:split_idx]
+                    test_gaps = gaps[split_idx:]
+
+                    # Fit exponential
+                    if free_loc:
+                        exp_params = expon.fit(train_gaps, floc=None)
+                    else:
+                        exp_params = expon.fit(train_gaps, floc=0)
+                    exp_loc, exp_scale = exp_params
+                    exp_loglik = stats.expon.logpdf(test_gaps, *exp_params).sum()
+                    exp_bic = -2 * exp_loglik + 1 * np.log(N)
+                    exp_ks = stats.kstest(test_gaps, "expon", args=exp_params).statistic
+
+                    # Fit lognormal
+                    positive_train = train_gaps[train_gaps > 0]
+                    if len(positive_train) < 2:
+                        logger.warning(
+                            f"n0={n0}: Insufficient positive gaps for lognormal"
+                        )
+                        continue
+                    log_train = np.log(positive_train)
+                    ln_mu = np.mean(log_train)
+                    ln_sigma = np.std(log_train, ddof=0)
+                    if free_loc:
+                        with warnings.catch_warnings(record=True) as w:
+                            warnings.simplefilter("always")
+                            ln_params = lognorm.fit(train_gaps, floc=None)
+                            if len(w) > 0:
+                                ln_params = lognorm.fit(train_gaps, floc=0)
+                                logger.warning(f"n0={n0}: Lognormal fallback to loc=0")
+                    else:
+                        ln_params = lognorm.fit(train_gaps, floc=0)
+                    ln_shape, ln_loc, ln_scale = ln_params
+                    ln_loglik = stats.lognorm.logpdf(
+                        test_gaps[test_gaps > 0], *ln_params
+                    ).sum()
+                    k_ln = 3 if free_loc and ln_loc > 0 else 2
+                    ln_bic = -2 * ln_loglik + k_ln * np.log(N)
+                    ln_ks = stats.kstest(test_gaps, "lognorm", args=ln_params).statistic
+
+                    delta_bic = exp_bic - ln_bic
+                    winner = (
+                        "lognormal"
+                        if delta_bic > 10
+                        else ("exponential" if delta_bic < -10 else "ambiguous")
                     )
 
-        # Save results
-        self._save_results(all_results)
-        self._generate_report(all_results)
+                    r = {
+                        "scale": n0,
+                        "log10_scale": np.log10(n0),
+                        "consecutive_gaps_used": consecutive_gaps_used,
+                        "realized_N": N,
+                        "mean_gap": np.mean(gaps),
+                        "expected_mean": np.log(n0),
+                        "exp_bic": exp_bic,
+                        "ln_bic": ln_bic,
+                        "delta_bic": delta_bic,
+                        "exp_ks": exp_ks,
+                        "ln_ks": ln_ks,
+                        "winner": winner,
+                        "alpha": a,
+                        "shuffle": shuffle,
+                        "free_loc": free_loc,
+                        "ln_loc": ln_loc,
+                        **meta,
+                    }
+                    res.append(r)
+                    logger.info(
+                        f"n0=10^{int(np.log10(n0)):2d}: consecutive_gaps_used={consecutive_gaps_used}, N={N:>8,}, mean={np.mean(gaps):6.2f}, ΔBIC={delta_bic:+8.1f}, winner={winner}"
+                    )
+
+                all_results[a] = res
+
+            # Save
+            self._save_logband_results(
+                all_results, alphas, max_gaps, shuffle, free_loc, tail_bias
+            )
+            self._generate_logband_report(all_results)
+            return all_results
+
+        else:
+            raise ValueError(f"Unknown mode: {mode}")
 
     def _plot_band_fit(
         self,
@@ -580,38 +689,216 @@ class FalsificationExperiment:
         print(report_text)
         print("=" * 80)
 
+    def _save_logband_results(
+        self,
+        all_results: Dict[float, List[Dict]],
+        alphas: List[float],
+        max_gaps: int,
+        shuffle: bool,
+        free_loc: bool,
+        tail_bias: bool,
+    ):
+        """
+        Save logband results to JSON and CSV.
+        """
+        output_dir = self.output_dir + "_logband"
+        os.makedirs(output_dir, exist_ok=True)
+
+        output = {
+            "experiment": "lognormal_vs_exponential_logband",
+            "protocol": {
+                "method": "fixed_log_band_width",
+                "alphas": alphas,
+                "log10_width_per_alpha": {a: 2 * np.log10(a) for a in alphas},
+                "max_gaps": max_gaps,
+                "subsampling": "tail_biased" if tail_bias else "uniform_random",
+                "shuffle": shuffle,
+                "free_loc": free_loc,
+                "scales": [10**k for k in range(2, 19)],
+            },
+            "results": {str(a): res for a, res in all_results.items()},
+        }
+
+        with open(os.path.join(output_dir, "results_logband.json"), "w") as f:
+            json.dump(output, f, indent=2, default=str)
+
+        # CSV
+        flat_data = []
+        for a, res in all_results.items():
+            for r in res:
+                r_copy = r.copy()
+                r_copy["alpha"] = a
+                flat_data.append(r_copy)
+        pd.DataFrame(flat_data).to_csv(
+            os.path.join(output_dir, "results_logband.csv"), index=False
+        )
+
+        logger.info(f"Logband results saved to {output_dir}")
+
+    def _generate_logband_report(self, all_results: Dict[float, List[Dict]]):
+        """
+        Generate report for logband results.
+        """
+        report = []
+        report.append("# Logband Falsification Test Report")
+
+        # Per alpha summary
+        for a, res in all_results.items():
+            n_total = len(res)
+            n_ln_wins = sum(1 for r in res if r["winner"] == "lognormal")
+            n_exp_wins = sum(1 for r in res if r["winner"] == "exponential")
+            n_amb = sum(1 for r in res if r["winner"] == "ambiguous")
+
+            report.append(f"## Alpha = {a}")
+            report.append(f"- Total Scales: {n_total}")
+            report.append(
+                f"- Lognormal Wins: {n_ln_wins} ({n_ln_wins / n_total * 100:.1f}%)"
+            )
+            report.append(
+                f"- Exponential Wins: {n_exp_wins} ({n_exp_wins / n_total * 100:.1f}%)"
+            )
+            report.append(f"- Ambiguous: {n_amb} ({n_amb / n_total * 100:.1f}%)")
+
+            # Crossover approximation
+            prev_delta = None
+            crossovers = []
+            for r in res:
+                if prev_delta is not None and prev_delta * r["delta_bic"] < 0:
+                    crossovers.append(r["scale"])
+                prev_delta = r["delta_bic"]
+            if crossovers:
+                report.append(f"- Approximate Crossover Scales: {crossovers}")
+
+        # Stability check
+        report.append("\n## Stability Across Alphas")
+        crossovers_per_alpha = {}
+        for a, res in all_results.items():
+            prev_delta = None
+            crossovers = []
+            for r in res:
+                if prev_delta is not None and prev_delta * r["delta_bic"] < 0:
+                    crossovers.append(r["scale"])
+                prev_delta = r["delta_bic"]
+            crossovers_per_alpha[a] = crossovers
+        report.append(f"Crossover scales per alpha: {crossovers_per_alpha}")
+        if (
+            all(len(c) > 0 for c in crossovers_per_alpha.values())
+            and max(len(c) for c in crossovers_per_alpha.values()) == 1
+        ):
+            report.append("Stable crossover across alphas (real transition likely).")
+        else:
+            report.append("Crossover varies or absent (possible artifact).")
+
+        # Overall
+        overall_ln_win_rate = sum(
+            1 for res in all_results.values() for r in res if r["winner"] == "lognormal"
+        ) / sum(len(res) for res in all_results.values() or [1])
+        report.append("\n## Conclusion")
+        if overall_ln_win_rate < 0.5:
+            report.append(
+                "**FALSIFIED**: Lognormal does not outperform exponential overall."
+            )
+        else:
+            report.append(
+                "**NOT FALSIFIED**: Lognormal provides better fit in most scales."
+            )
+
+        report_text = "\n".join(report)
+        with open(
+            os.path.join(self.output_dir + "_logband", "report_logband.md"), "w"
+        ) as f:
+            f.write(report_text)
+
+        logger.info("Logband report generated.")
+        print(report_text)
+
 
 def main():
     parser = argparse.ArgumentParser(
         description="Run Lognormal vs Exponential Falsification Test"
     )
     parser.add_argument(
+        "--mode",
+        type=str,
+        default="logband",
+        choices=["legacy", "logband"],
+        help="Mode: 'legacy' for original, 'logband' for fixed log-band sampling",
+    )
+    parser.add_argument(
         "--ranges",
         type=str,
         default="1e6:1e7,1e7:1e8",
-        help="Comma-separated list of ranges (e.g. '1e6:1e7,1e7:1e8')",
+        help="For legacy mode: Comma-separated ranges (e.g. '1e6:1e7,1e7:1e8')",
+    )
+    parser.add_argument(
+        "--scales",
+        type=str,
+        default="1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9,1e10,1e11,1e12,1e13,1e14,1e15,1e16,1e17,1e18",
+        help="For logband mode: Comma-separated scales (e.g. '1e5,1e6,...')",
+    )
+    parser.add_argument(
+        "--alphas",
+        type=str,
+        default="2.0",
+        help="For logband: Comma-separated alphas (e.g. '1.5,2.0,3.0')",
+    )
+    parser.add_argument(
+        "--max-gaps",
+        type=int,
+        default=50000,
+        help="Max gaps per scale in logband (subsample if exceeded)",
+    )
+    parser.add_argument(
+        "--shuffle",
+        action="store_true",
+        default=False,
+        help="Enable shuffling in logband (default off)",
+    )
+    parser.add_argument(
+        "--free-loc",
+        action="store_true",
+        default=True,
+        help="Allow free loc in fits (default on)",
+    )
+    parser.add_argument(
+        "--tail-bias",
+        action="store_true",
+        default=False,
+        help="Tail-biased subsampling in logband (default uniform)",
     )
     parser.add_argument(
         "--output", type=str, default="results", help="Output directory"
     )
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument(
-        "--bands", type=int, default=6, help="Number of bands per range"
+        "--bands", type=int, default=6, help="For legacy: Number of bands per range"
     )
     parser.add_argument(
-        "--prime-source",
-        type=str,
-        default="sieve",
-        choices=["sieve", "primesieve", "python"],
-        help="Prime generation method",
+        "--min-gaps", type=int, default=5000, help="For legacy: Min gaps per band"
     )
 
     args = parser.parse_args()
 
-    ranges = args.ranges.split(",")
-
-    experiment = FalsificationExperiment(args.output, args.seed, args.prime_source)
-    experiment.run(ranges, n_bands=args.bands)
+    if args.mode == "legacy":
+        ranges = args.ranges.split(",")
+        experiment = FalsificationExperiment(args.output, args.seed)
+        experiment.run(ranges, n_bands=args.bands, min_gaps=args.min_gaps)
+    else:  # logband
+        scales = [float(s) for s in args.scales.split(",")]
+        alphas_list = [float(a) for a in args.alphas.split(",")]
+        experiment = FalsificationExperiment(args.output, args.seed)
+        experiment.run(
+            ranges=None,
+            n_bands=args.bands,
+            min_gaps=args.min_gaps,
+            alpha=alphas_list[0] if len(alphas_list) == 1 else None,
+            max_gaps=args.max_gaps,
+            shuffle=args.shuffle,
+            free_loc=args.free_loc,
+            tail_bias=args.tail_bias,
+            alphas=alphas_list,
+            mode="logband",
+        )
 
 
 if __name__ == "__main__":
