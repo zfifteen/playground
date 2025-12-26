@@ -190,44 +190,129 @@ def test_summary_generation() -> Tuple[bool, str]:
         return False, f"Exception during summary validation: {str(e)}"
 
 def test_sub_issues_detection() -> Tuple[bool, str]:
-    # PURPOSE: Verify that all expected sub-issues are identified
-    # INPUTS: Mock PR data
-    # PROCESS:
-    #   1. Generate mock PR data
-    #   2. Call analyze_pr()
-    #   3. Extract sub_issues list from result
-    #   4. Verify count == 4 (per implementation)
-    #   5. Check each SubIssue has description, dependencies, impact
-    #   6. Validate specific issues:
-    #      - Falsification threshold misalignment
-    #      - Reduced test set (26 vs 70)
-    #      - Omitted 5th criterion
-    #      - Z5D scoring robustness
-    #   7. Verify dependencies lists are non-empty strings
-    # OUTPUTS: (bool, str) - (pass/fail, issue summary)
-    # DEPENDENCIES: generate_mock_pr_data() [IMPLEMENTED ✓], analyze_pr()
-    pass
+    """
+    IMPLEMENTED: Verify that all expected sub-issues are identified.
+    """
+    try:
+        # Step 1: Generate mock PR data
+        pr_data = generate_mock_pr_data()
+        
+        # Step 2: Call analyze_pr()
+        result = analyze_pr(pr_data)
+        sub_issues = result.sub_issues
+        
+        # Step 3: Verify count == 4
+        if len(sub_issues) != 4:
+            return False, f"Expected 4 sub-issues, got {len(sub_issues)}"
+        
+        # Step 4: Check each SubIssue has required fields
+        for i, issue in enumerate(sub_issues):
+            if not isinstance(issue, SubIssue):
+                return False, f"Sub-issue {i} is not a SubIssue instance"
+            if not issue.description or not isinstance(issue.description, str):
+                return False, f"Sub-issue {i} has invalid description"
+            if not issue.dependencies or not isinstance(issue.dependencies, list):
+                return False, f"Sub-issue {i} has invalid dependencies"
+            if not issue.impact or not isinstance(issue.impact, str):
+                return False, f"Sub-issue {i} has invalid impact"
+        
+        # Step 5: Validate specific expected issues (keywords in descriptions)
+        expected_issue_keywords = [
+            ['threshold', 'falsification'],  # Falsification threshold misalignment
+            ['test set', '26', '70'],         # Reduced test set
+            ['5th', 'criterion', 'omitted'],  # Omitted 5th criterion
+            ['Z5D', 'robustness']             # Z5D scoring robustness
+        ]
+        
+        issues_found = [False] * len(expected_issue_keywords)
+        for issue in sub_issues:
+            desc_lower = issue.description.lower()
+            for idx, keywords in enumerate(expected_issue_keywords):
+                if all(kw.lower() in desc_lower for kw in keywords):
+                    issues_found[idx] = True
+        
+        missing_issues = []
+        for idx, found in enumerate(issues_found):
+            if not found:
+                missing_issues.append(f"Issue with keywords {expected_issue_keywords[idx]}")
+        
+        if missing_issues:
+            return False, f"Missing expected sub-issues: {'; '.join(missing_issues)}"
+        
+        # Step 6: Verify dependencies are non-empty
+        for issue in sub_issues:
+            if len(issue.dependencies) == 0:
+                return False, f"Issue '{issue.description[:50]}...' has empty dependencies list"
+        
+        return True, f"All 4 expected sub-issues detected with proper structure and dependencies"
+        
+    except Exception as e:
+        return False, f"Exception during sub-issues detection: {str(e)}"
 
 def test_insights_depth() -> Tuple[bool, str]:
-    # PURPOSE: Test that insights meet quality and depth standards
-    # INPUTS: Mock PR data
-    # PROCESS:
-    #   1. Generate mock data
-    #   2. Execute analyze_pr()
-    #   3. Extract insights list
-    #   4. Verify base insights count == 3 (before kappa adjustment)
-    #   5. Check kappa trigger: depth_adjust = 3 * 0.08 = 0.24 > 0.2
-    #   6. Confirm 4th insight added (research generalization)
-    #   7. Validate each Insight has category, evidence, implication
-    #   8. Check for expected categories:
-    #      - Z5D as PNT-based heuristic
-    #      - Confounding in enrichment measurement
-    #      - Incomplete scale-invariance testing
-    #      - Research generalization (if kappa triggers)
-    # OUTPUTS: (bool, str) - (pass/fail, insight analysis)
-    # DEPENDENCIES: generate_mock_pr_data() [IMPLEMENTED ✓], analyze_pr(), refine_insights()
-    # NOTE: Kappa logic (_KAPPA_INSIGHT=0.08) controls 4th insight generation
-    pass
+    """
+    IMPLEMENTED: Test that insights meet quality and depth standards.
+    """
+    try:
+        # Step 1: Generate mock data
+        pr_data = generate_mock_pr_data()
+        
+        # Step 2: Execute analyze_pr()
+        result = analyze_pr(pr_data)
+        insights = result.insights
+        
+        # Step 3: Verify base insights count (should be 3, then kappa adds 4th)
+        # Base insights are hardcoded in refine_insights()
+        if len(insights) < 3:
+            return False, f"Expected at least 3 base insights, got {len(insights)}"
+        
+        # Step 4: Check kappa trigger
+        # depth_adjust = 3 * _KAPPA_INSIGHT = 3 * 0.08 = 0.24 > 0.2
+        # So 4th insight should be added
+        depth_adjust = 3 * _KAPPA_INSIGHT
+        if depth_adjust > 0.2:
+            if len(insights) != 4:
+                return False, f"Kappa trigger (depth_adjust={depth_adjust:.2f} > 0.2) should generate 4 insights, got {len(insights)}"
+        
+        # Step 5: Validate each Insight has required fields
+        for i, insight in enumerate(insights):
+            if not isinstance(insight, Insight):
+                return False, f"Insight {i} is not an Insight instance"
+            if not insight.category or not isinstance(insight.category, str):
+                return False, f"Insight {i} has invalid category"
+            if not insight.evidence or not isinstance(insight.evidence, str):
+                return False, f"Insight {i} has invalid evidence"
+            if not insight.implication or not isinstance(insight.implication, str):
+                return False, f"Insight {i} has invalid implication"
+        
+        # Step 6: Check for expected categories
+        expected_categories = [
+            'PNT-based',          # Z5D as PNT-based heuristic
+            'Confounding',        # Confounding in enrichment measurement
+            'scale-invariance',   # Incomplete scale-invariance testing
+            'generalization'      # Research generalization (if kappa triggers)
+        ]
+        
+        categories_found = [False] * len(expected_categories)
+        for insight in insights:
+            cat_lower = insight.category.lower()
+            for idx, expected in enumerate(expected_categories):
+                if expected.lower() in cat_lower:
+                    categories_found[idx] = True
+        
+        # First 3 should always be present
+        for idx in range(3):
+            if not categories_found[idx]:
+                return False, f"Missing expected insight category: {expected_categories[idx]}"
+        
+        # 4th should be present if kappa triggered
+        if depth_adjust > 0.2 and not categories_found[3]:
+            return False, f"Kappa triggered but missing 'generalization' insight"
+        
+        return True, f"All {len(insights)} insights validated with proper depth (kappa_adjust={depth_adjust:.2f})"
+        
+    except Exception as e:
+        return False, f"Exception during insights depth test: {str(e)}"
 
 def test_recommendations_prioritization() -> Tuple[bool, str]:
     # PURPOSE: Validate recommendation priorities and rationale quality
