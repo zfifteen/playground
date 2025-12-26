@@ -67,21 +67,42 @@ def generate_semiprimes(n: int, min_value: int = 100, max_value: int = 10000) ->
 
 
 def compute_resonance(n: int, k: int, theta: float = 0.0) -> float:
-    # PURPOSE: Compute geometric resonance value for candidate divisor k of number n
-    # INPUTS:
-    #   - n (int): The number being factored (semiprime)
-    #   - k (int): Candidate divisor to test
-    #   - theta (float): Phase offset, default 0.0
-    # PROCESS:
-    #   1. Validate inputs (k > 1, avoid log(0))
-    #   2. Compute ln(k) safely
-    #   3. Calculate first term: cos(θ + ln(k)·φ) / ln(k)
-    #   4. Calculate second term: cos(ln(k)·e) · 0.5
-    #   5. Return sum of both terms
-    # OUTPUTS: float - resonance value R(k)
-    # DEPENDENCIES: numpy.cos, numpy.log, PHI, E constants
-    # NOTES: Higher values indicate stronger resonance (potential factor)
-    pass
+    """
+    IMPLEMENTED: Compute geometric resonance value for candidate divisor k.
+    
+    Uses irrational constants φ (golden ratio) and e (Euler's number) to
+    create phase-aligned resonance patterns that may reveal prime factors.
+    
+    Args:
+        n: The number being factored (semiprime)
+        k: Candidate divisor to test
+        theta: Phase offset, default 0.0
+    
+    Returns:
+        float - resonance value R(k). Higher values indicate stronger resonance.
+    """
+    # Validate inputs
+    if k <= 1:
+        return 0.0  # Invalid divisor
+    
+    # Compute ln(k) safely
+    log_k = np.log(k)
+    
+    if log_k == 0:  # k == 1, already handled above but be safe
+        return 0.0
+    
+    # Calculate first term: cos(θ + ln(k)·φ) / ln(k)
+    # This uses the golden ratio for phase alignment
+    term1 = np.cos(theta + log_k * PHI) / log_k
+    
+    # Calculate second term: cos(ln(k)·e) · 0.5
+    # This uses Euler's number for additional resonance component
+    term2 = np.cos(log_k * E) * 0.5
+    
+    # Return sum of both terms
+    resonance = term1 + term2
+    
+    return resonance
 
 
 def scan_divisors(n: int, theta: float = 0.0, max_k: int = None) -> np.ndarray:
@@ -96,7 +117,7 @@ def scan_divisors(n: int, theta: float = 0.0, max_k: int = None) -> np.ndarray:
     #   3. For each k, call compute_resonance(n, k, theta) [IMPLEMENTED ✓]
     #   4. Store results in numpy array
     # OUTPUTS: np.ndarray - resonance values for each candidate divisor
-    # DEPENDENCIES: compute_resonance() [TO BE IMPLEMENTED], numpy
+    # DEPENDENCIES: compute_resonance() [IMPLEMENTED ✓], numpy
     # NOTES: Array index i corresponds to divisor i+2 (skip 0 and 1)
     pass
 
