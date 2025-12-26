@@ -1,0 +1,74 @@
+# PR-0037 Validation Configuration
+
+# Target PR to validate
+pr_url: "https://github.com/zfifteen/geofac_validation/pull/37"
+
+# Validation criteria
+validation:
+  # Module validation
+  modules:
+    expected_count: 5
+    expected_total_loc: 1750
+    loc_tolerance: 0.15  # 15%
+    core_modules:
+      - generate_test_set.py
+      - baseline_mc_enrichment.py
+      - z5d_enrichment_test.py
+      - statistical_analysis.py
+      - visualization.py
+  
+  # Configuration validation
+  configs:
+    expected_count: 3
+    required_formats: [yaml, yml]
+  
+  # Documentation validation
+  docs:
+    expected_count: 4
+    expected_total_bytes: 32768  # 32KB
+    size_tolerance: 0.20  # 20%
+    required_docs:
+      - README.md
+      - FALSIFICATION_CRITERIA.md
+  
+  # Statistical validation
+  statistical:
+    required_tests:
+      - wilcoxon
+      - mann_whitney
+      - levene
+      - bootstrap
+    parameters:
+      alpha: 0.01
+      bootstrap_resamples: 10000
+      cohens_d_threshold: 1.5
+  
+  # Falsification validation (CRITICAL)
+  falsification:
+    expected_criteria_count: 4
+    failure_threshold: 1  # "any ONE failure" triggers falsification
+    confidence_levels:
+      two_or_more_failures: 0.95
+      one_failure: 0.85
+    forbidden_statuses:
+      - PARTIALLY_CONFIRMED
+  
+  # Reproducibility validation
+  reproducibility:
+    required_features:
+      - fixed_seeds
+      - qmc_sobol
+      - version_pinning
+      - provenance_logging
+
+# Output configuration
+output:
+  evidence_dir: "evidence"
+  findings_file: "FINDINGS.md"
+  report_file: "validation_report.json"
+
+# Overall verdict criteria
+verdict:
+  pass_threshold: 0.83  # 5 of 6 validators must pass
+  high_confidence_threshold: 0.95  # for ≥5 validators passing
+  medium_confidence_threshold: 0.85  # for ≥4 validators passing
