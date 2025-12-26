@@ -188,11 +188,12 @@ class CRISPRGuideOptimizer:
         # PROCESS:
         #   1. Compute on-target score using spectral disruption
         #   2. If off_targets provided: score each using score_multiple_targets()
-        #   3. Compute curvature metric for guide sequence complexity
+        #   3. Compute curvature metric for guide sequence complexity using κ(len(guide))
         #   4. Combine scores: spectrum_weight * spectral + curvature_weight * κ
         #   5. Return comprehensive scoring dict
         # OUTPUTS: dict - {on_target_score, off_target_scores, combined_score, ...}
-        # DEPENDENCIES: SpectralDisruptionScorer [TO BE IMPLEMENTED], curvature_metric() [TO BE IMPLEMENTED]
+        # DEPENDENCIES: SpectralDisruptionScorer [TO BE IMPLEMENTED], curvature_metric() [IMPLEMENTED ✓]
+        # NOTE: Can now compute actual κ values for complexity assessment
         pass
     
     def rank_guides(self,
@@ -267,11 +268,12 @@ def compute_repair_pathway_bias(sequence: str,
     # PROCESS:
     #   1. Extract local sequence context (±50bp around mutation)
     #   2. Compute spectral features using SpectralDisruptionScorer
-    #   3. Apply curvature metrics for complexity assessment
+    #   3. Apply curvature metrics for complexity assessment using κ(n) [IMPLEMENTED ✓]
     #   4. Use θ'(position, k) for positional bias
     #   5. Predict NHEJ vs HDR pathway preference
     #   6. Return pathway probabilities and confidence
     # OUTPUTS: dict - {nhej_prob, hdr_prob, confidence, features, ...}
-    # DEPENDENCIES: SpectralDisruptionScorer [TO BE IMPLEMENTED], curvature_metric() [TO BE IMPLEMENTED]
+    # DEPENDENCIES: SpectralDisruptionScorer [TO BE IMPLEMENTED], curvature_metric() [IMPLEMENTED ✓]
     # NOTE: Supports machine learning models for pathway prediction per problem statement
+    #       Can now compute actual κ values for local complexity
     pass

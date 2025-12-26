@@ -60,13 +60,52 @@ class TestCurvatureMetric(unittest.TestCase):
     
     def test_curvature_basic(self):
         """Test basic curvature computation."""
-        # Will be testable once implemented
-        pass
+        # Test a known prime
+        kappa_7 = curvature_metric(7)
+        # d(7) = 2, κ(7) = 2 * ln(8) / e² ≈ 0.565
+        expected = 2 * np.log(8) / E_SQUARED
+        self.assertAlmostEqual(kappa_7, expected, places=6)
+        
+        # Test a known composite
+        kappa_12 = curvature_metric(12)
+        # d(12) = 6, κ(12) = 6 * ln(13) / e² ≈ 2.08
+        expected = 6 * np.log(13) / E_SQUARED
+        self.assertAlmostEqual(kappa_12, expected, places=6)
     
     def test_curvature_prime_vs_composite(self):
         """Test that primes have lower curvature than composites."""
-        # Expected behavior based on problem statement
-        pass
+        # Compare prime 7 vs composite 8
+        kappa_prime = curvature_metric(7)
+        kappa_composite = curvature_metric(8)
+        self.assertLess(kappa_prime, kappa_composite)
+        
+        # Compare prime 11 vs composite 12
+        kappa_11 = curvature_metric(11)
+        kappa_12 = curvature_metric(12)
+        self.assertLess(kappa_11, kappa_12)
+    
+    def test_curvature_array_input(self):
+        """Test curvature computation with array input."""
+        n_array = np.array([7, 8, 11, 12])
+        kappa_array = curvature_metric(n_array)
+        
+        # Check shape
+        self.assertEqual(kappa_array.shape, (4,))
+        
+        # Check individual values match scalar calls
+        self.assertAlmostEqual(kappa_array[0], curvature_metric(7), places=6)
+        self.assertAlmostEqual(kappa_array[1], curvature_metric(8), places=6)
+        self.assertAlmostEqual(kappa_array[2], curvature_metric(11), places=6)
+        self.assertAlmostEqual(kappa_array[3], curvature_metric(12), places=6)
+    
+    def test_curvature_invalid_input(self):
+        """Test that invalid inputs raise appropriate errors."""
+        with self.assertRaises(ValueError):
+            curvature_metric(0)
+        with self.assertRaises(ValueError):
+            curvature_metric(-5)
+        with self.assertRaises(ValueError):
+            curvature_metric(np.array([1, 2, -3, 4]))
 
 
 class TestGoldenRatioPhase(unittest.TestCase):

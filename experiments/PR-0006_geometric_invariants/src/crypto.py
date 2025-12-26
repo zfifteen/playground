@@ -156,8 +156,9 @@ class RSACandidateGenerator:
         # OUTPUTS: 
         #   ndarray - shape (n_unique, 2) of (p,q) pairs
         #   dict (optional) - {unique_count, efficiency, avg_curvature, ...}
-        # DEPENDENCIES: QMC generator, bias, curvature_metric() [TO BE IMPLEMENTED]
+        # DEPENDENCIES: QMC generator, bias, curvature_metric() [IMPLEMENTED ✓]
         # NOTE: Target 1.03-1.34× unique candidate improvement per problem statement
+        #       Can now filter using actual κ(n) computation
         pass
     
     def test_candidate(self, p: int, q: int) -> bool:

@@ -60,18 +60,54 @@ def divisor_count(n: int) -> int:
 
 
 def curvature_metric(n: Union[int, np.ndarray]) -> Union[float, np.ndarray]:
-    # PURPOSE: Compute the Z Framework curvature metric κ(n)
-    # INPUTS: n (int or ndarray) - positive integer(s)
-    # PROCESS:
-    #   1. Validate n > 0
-    #   2. Compute divisor count d(n) using divisor_count() [IMPLEMENTED ✓]
-    #   3. Compute κ(n) = d(n) · ln(n+1) / e²
-    #   4. Handle both scalar and array inputs
-    # OUTPUTS: float or ndarray - curvature metric value(s)
-    # DEPENDENCIES: divisor_count() [IMPLEMENTED ✓], numpy.log
-    # NOTE: Used for prime vs composite classification (~83-88% accuracy)
-    #       and biasing QMC sampling toward low-curvature regions
-    pass
+    """
+    IMPLEMENTED: Compute the Z Framework curvature metric κ(n).
+    
+    Formula: κ(n) = d(n) · ln(n+1) / e²
+    
+    This metric captures geometric properties of integers useful for:
+    - Prime vs composite classification (~83-88% accuracy)
+    - Biasing QMC sampling toward low-curvature (prime-rich) regions
+    
+    Args:
+        n: Positive integer(s) to compute curvature for
+        
+    Returns:
+        Curvature metric value(s). Primes typically have lower values
+        than composites of similar magnitude.
+        
+    Examples:
+        >>> curvature_metric(7)   # prime: d(7)=2
+        # Returns: 2 * ln(8) / e² ≈ 0.565
+        >>> curvature_metric(12)  # composite: d(12)=6
+        # Returns: 6 * ln(13) / e² ≈ 2.08
+    """
+    # Handle scalar input
+    if isinstance(n, (int, np.integer)):
+        if n <= 0:
+            raise ValueError(f"n must be positive, got {n}")
+        
+        d_n = divisor_count(n)
+        kappa = d_n * np.log(n + 1) / E_SQUARED
+        return float(kappa)
+    
+    # Handle array input
+    if isinstance(n, np.ndarray):
+        if np.any(n <= 0):
+            raise ValueError("All elements of n must be positive")
+        
+        # Vectorized computation
+        result = np.zeros(n.shape, dtype=float)
+        flat_n = n.flatten()
+        flat_result = result.flatten()
+        
+        for i, val in enumerate(flat_n):
+            d_n = divisor_count(int(val))
+            flat_result[i] = d_n * np.log(val + 1) / E_SQUARED
+        
+        return flat_result.reshape(n.shape)
+    
+    raise TypeError(f"n must be int or ndarray, got {type(n)}")
 
 
 def golden_ratio_phase(n: Union[int, np.ndarray], 
@@ -137,12 +173,12 @@ class ZFrameworkCalculator:
         # INPUTS: n_values (ndarray) - array of positive integers
         # PROCESS:
         #   1. Check cache for each n in n_values
-        #   2. Compute uncached values using curvature_metric() [TO BE IMPLEMENTED]
+        #   2. Compute uncached values using curvature_metric() [IMPLEMENTED ✓]
         #   3. Update cache with new values (respecting cache_size limit)
         #   4. Return array of κ(n) values in same order as input
         #   5. Use LRU eviction if cache exceeds limit
         # OUTPUTS: ndarray - curvature values
-        # DEPENDENCIES: curvature_metric() [TO BE IMPLEMENTED]
+        # DEPENDENCIES: curvature_metric() [IMPLEMENTED ✓]
         pass
     
     def compute_phase_batch(self, 
@@ -174,8 +210,9 @@ class ZFrameworkCalculator:
         #   3. Classify: κ(n) < threshold → likely prime, else composite
         #   4. Return boolean array (True = prime, False = composite)
         # OUTPUTS: ndarray[bool] - classification results
-        # DEPENDENCIES: compute_curvature_batch() [TO BE IMPLEMENTED]
+        # DEPENDENCIES: compute_curvature_batch() [TO BE IMPLEMENTED], curvature_metric() [IMPLEMENTED ✓]
         # NOTE: Expected accuracy ~83-88% based on problem statement
+        #       Can now directly compute κ(n) for threshold learning
         pass
     
     def get_cache_stats(self) -> dict:
