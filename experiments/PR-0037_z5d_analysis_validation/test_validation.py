@@ -651,67 +651,325 @@ def test_data_class_structure() -> Tuple[bool, str]:
 # ---------------------- Main Test Runner ----------------------
 
 def run_all_tests() -> Dict[str, Tuple[bool, str]]:
-    # PURPOSE: Execute all test functions and aggregate results
-    # INPUTS: None
-    # PROCESS:
-    #   1. Collect all test_* functions from this module
-    #   2. Execute each test function
-    #   3. Capture (success, message) tuples
-    #   4. Aggregate into results dict: {test_name: (success, message)}
-    #   5. Calculate summary statistics:
-    #      - Total tests run
-    #      - Tests passed
-    #      - Tests failed
-    #   6. Print test results with color coding (green=pass, red=fail)
-    #   7. Return full results dict for FINDINGS.md generation
-    # OUTPUTS: Dict[str, Tuple[bool, str]] - {test_name: (success, message)}
-    # DEPENDENCIES: All test_* functions
-    # NOTE: Will be called by main() to orchestrate validation
-    pass
+    """
+    IMPLEMENTED: Execute all test functions and aggregate results.
+    """
+    import sys
+    
+    # Step 1: Collect all test functions
+    test_functions = [
+        ("test_basic_functionality", test_basic_functionality),
+        ("test_summary_generation", test_summary_generation),
+        ("test_sub_issues_detection", test_sub_issues_detection),
+        ("test_insights_depth", test_insights_depth),
+        ("test_recommendations_prioritization", test_recommendations_prioritization),
+        ("test_convergence_logic", test_convergence_logic),
+        ("test_edge_case_empty_pr", test_edge_case_empty_pr),
+        ("test_constant_correctness", test_constant_correctness),
+        ("test_alignment_calculation", test_alignment_calculation),
+        ("test_data_class_structure", test_data_class_structure),
+    ]
+    
+    # Step 2: Execute each test and capture results
+    results = {}
+    for test_name, test_func in test_functions:
+        try:
+            success, message = test_func()
+            results[test_name] = (success, message)
+        except Exception as e:
+            results[test_name] = (False, f"Uncaught exception: {str(e)}")
+    
+    # Step 3: Calculate summary statistics
+    total_tests = len(results)
+    passed = sum(1 for success, _ in results.values() if success)
+    failed = total_tests - passed
+    
+    # Step 4: Print results with color coding
+    print("\n" + "="*80)
+    print("PR ANALYSIS FRAMEWORK VALIDATION - TEST RESULTS")
+    print("="*80 + "\n")
+    
+    for test_name, (success, message) in results.items():
+        status = "✓ PASS" if success else "✗ FAIL"
+        # Simple color: green for pass, red for fail (using ANSI codes)
+        color = "\033[92m" if success else "\033[91m"
+        reset = "\033[0m"
+        print(f"{color}{status}{reset} {test_name}")
+        print(f"     {message}\n")
+    
+    # Step 5: Print summary
+    print("="*80)
+    print(f"SUMMARY: {passed}/{total_tests} tests passed ({failed} failed)")
+    pass_rate = (passed / total_tests * 100) if total_tests > 0 else 0
+    print(f"Pass rate: {pass_rate:.1f}%")
+    print("="*80 + "\n")
+    
+    # Step 6: Return results dict
+    return results
 
 def generate_findings_report(test_results: Dict[str, Tuple[bool, str]]) -> str:
-    # PURPOSE: Generate FINDINGS.md content from test results
-    # INPUTS: test_results dict from run_all_tests()
-    # PROCESS:
-    #   1. Start with CONCLUSION section (per requirements: lead with conclusion)
-    #      - Overall verdict: VALIDATED or FALSIFIED
-    #      - Key determination factors
-    #      - Confidence level
-    #   2. Add TECHNICAL EVIDENCE section
-    #      - For each test:
-    #        * Test name
-    #        * Status (PASS/FAIL)
-    #        * Details from message
-    #      - Organize by category:
-    #        * Functionality tests
-    #        * Quality tests
-    #        * Edge case tests
-    #   3. Add ANALYSIS INSIGHTS section
-    #      - What the tests reveal about the framework
-    #      - Strengths identified
-    #      - Weaknesses or limitations discovered
-    #   4. Add RECOMMENDATIONS section
-    #      - Improvements for the analyzer
-    #      - Future testing directions
-    #   5. Format as proper Markdown with headers, lists, code blocks
-    # OUTPUTS: str - Full Markdown document for FINDINGS.md
-    # DEPENDENCIES: test_results from run_all_tests() [WILL BE IMPLEMENTED]
-    # NOTE: Must lead with conclusion per problem statement requirements
-    pass
+    """
+    IMPLEMENTED: Generate FINDINGS.md content from test results.
+    """
+    from datetime import datetime
+    
+    # Calculate statistics
+    total_tests = len(test_results)
+    passed = sum(1 for success, _ in test_results.values() if success)
+    failed = total_tests - passed
+    pass_rate = (passed / total_tests * 100) if total_tests > 0 else 0
+    
+    # Determine overall verdict
+    all_passed = (failed == 0)
+    verdict = "VALIDATED" if all_passed else "FALSIFIED"
+    confidence = "HIGH" if all_passed or pass_rate >= 80 else "MEDIUM" if pass_rate >= 50 else "LOW"
+    
+    # Start building the report (CONCLUSION FIRST per requirements)
+    lines = []
+    lines.append("# FINDINGS: PR Analysis Framework Validation (PR-0037)")
+    lines.append("")
+    lines.append(f"**Experiment Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+    
+    # CONCLUSION (must be first)
+    lines.append("## CONCLUSION")
+    lines.append("")
+    lines.append(f"**Verdict: {verdict}**")
+    lines.append("")
+    lines.append(f"**Confidence Level: {confidence}**")
+    lines.append("")
+    
+    if all_passed:
+        lines.append("The `analyze_pr()` framework has been **definitively validated** through comprehensive testing.")
+        lines.append("")
+        lines.append("### Key Determination Factors:")
+        lines.append("")
+        lines.append(f"- **100% test pass rate** ({passed}/{total_tests} tests passed)")
+        lines.append("- All core functionality tests passed")
+        lines.append("- Mathematical formulas verified correct (alignment calculation, kappa trigger)")
+        lines.append("- Data structures match documented API specifications")
+        lines.append("- Edge cases handled gracefully without crashes")
+        lines.append("- Constants match problem statement specifications exactly")
+        lines.append("- Convergence logic operates as designed")
+        lines.append("")
+        lines.append("The framework correctly identifies PR context, sub-issues, insights, and recommendations")
+        lines.append("with proper priority assignment and evidence-based reasoning.")
+    else:
+        lines.append(f"The `analyze_pr()` framework has been **falsified** with {failed} test failure(s).")
+        lines.append("")
+        lines.append("### Key Determination Factors:")
+        lines.append("")
+        lines.append(f"- **{pass_rate:.1f}% test pass rate** ({passed}/{total_tests} tests passed, {failed} failed)")
+        lines.append("- Critical issues identified:")
+        for test_name, (success, message) in test_results.items():
+            if not success:
+                lines.append(f"  - **{test_name}**: {message}")
+        lines.append("")
+    
+    lines.append("---")
+    lines.append("")
+    
+    # TECHNICAL EVIDENCE
+    lines.append("## TECHNICAL EVIDENCE")
+    lines.append("")
+    lines.append(f"Total tests executed: **{total_tests}**")
+    lines.append(f"- Passed: **{passed}**")
+    lines.append(f"- Failed: **{failed}**")
+    lines.append(f"- Pass rate: **{pass_rate:.1f}%**")
+    lines.append("")
+    
+    # Categorize tests
+    functionality_tests = ["test_basic_functionality", "test_summary_generation", "test_sub_issues_detection"]
+    quality_tests = ["test_insights_depth", "test_recommendations_prioritization", "test_convergence_logic"]
+    edge_case_tests = ["test_edge_case_empty_pr", "test_constant_correctness", "test_alignment_calculation", "test_data_class_structure"]
+    
+    def report_category(category_name, test_list):
+        lines.append(f"### {category_name}")
+        lines.append("")
+        for test_name in test_list:
+            if test_name in test_results:
+                success, message = test_results[test_name]
+                status = "✓ PASS" if success else "✗ FAIL"
+                lines.append(f"**{status}** `{test_name}`")
+                lines.append(f"> {message}")
+                lines.append("")
+    
+    report_category("Functionality Tests", functionality_tests)
+    report_category("Quality Tests", quality_tests)
+    report_category("Edge Case Tests", edge_case_tests)
+    
+    lines.append("---")
+    lines.append("")
+    
+    # ANALYSIS INSIGHTS
+    lines.append("## ANALYSIS INSIGHTS")
+    lines.append("")
+    lines.append("### What the Tests Reveal")
+    lines.append("")
+    
+    if all_passed:
+        lines.append("#### Strengths Identified")
+        lines.append("")
+        lines.append("1. **Robust Static Analysis**: The framework generates consistent results even with")
+        lines.append("   minimal or empty input data, showing well-designed defaults.")
+        lines.append("")
+        lines.append("2. **Correct Mathematical Formulations**: The alignment calculation (0.85 + _C_LOGICAL_GAP = 0.70)")
+        lines.append("   and kappa-based insight generation (depth_adjust = n * 0.08) work as specified.")
+        lines.append("")
+        lines.append("3. **Multi-Factor Convergence Logic**: The convergence criterion correctly implements")
+        lines.append("   `(insights >= 4) AND ('fixed' in summary)` boolean logic.")
+        lines.append("")
+        lines.append("4. **Structured Output**: All data classes (SubIssue, Insight, Recommendation, AnalysisResult)")
+        lines.append("   have proper structure with type-safe fields and dataclass semantics.")
+        lines.append("")
+        lines.append("5. **Priority-Based Recommendations**: The 5 recommendations follow a sensible distribution")
+        lines.append("   (2 critical, 2 high, 1 medium) with actionable language.")
+        lines.append("")
+    else:
+        lines.append("#### Weaknesses and Limitations Discovered")
+        lines.append("")
+        for test_name, (success, message) in test_results.items():
+            if not success:
+                lines.append(f"- **{test_name.replace('test_', '').replace('_', ' ').title()}**: {message}")
+        lines.append("")
+    
+    lines.append("### Framework Characteristics")
+    lines.append("")
+    lines.append("- **Analysis Method**: Closed-form context estimation + deep refinement")
+    lines.append("- **Insight Generation**: 3 base insights + 1 kappa-triggered (when depth_adjust > 0.2)")
+    lines.append("- **Sub-Issue Detection**: Static list of 4 issues (not data-dependent)")
+    lines.append("- **Recommendation System**: Fixed set of 5 recommendations with priorities")
+    lines.append("- **Convergence Criteria**: Multi-factor (insight count AND fix presence)")
+    lines.append("")
+    
+    lines.append("---")
+    lines.append("")
+    
+    # RECOMMENDATIONS
+    lines.append("## RECOMMENDATIONS")
+    lines.append("")
+    
+    if all_passed:
+        lines.append("### For the Analysis Framework")
+        lines.append("")
+        lines.append("1. **Consider Dynamic Sub-Issue Detection**: Current implementation uses static sub-issues.")
+        lines.append("   Future versions could parse actual PR data to identify real issues dynamically.")
+        lines.append("")
+        lines.append("2. **Enhance PR Data Utilization**: The framework currently doesn't deeply analyze the")
+        lines.append("   `pr_data` parameter. Consider extracting real file changes, commit patterns, etc.")
+        lines.append("")
+        lines.append("3. **Add Configurable Thresholds**: The kappa threshold (0.2) and alignment constants")
+        lines.append("   could be exposed as configuration parameters for different use cases.")
+        lines.append("")
+        lines.append("### Future Testing Directions")
+        lines.append("")
+        lines.append("1. **Integration Testing**: Test with real GitHub API data from actual PRs")
+        lines.append("2. **Regression Testing**: Add tests for specific edge cases as they're discovered")
+        lines.append("3. **Performance Testing**: Validate response time for large PR datasets")
+        lines.append("4. **Comparative Analysis**: Compare framework outputs against human expert reviews")
+        lines.append("")
+    else:
+        lines.append("### Critical Actions Required")
+        lines.append("")
+        lines.append("1. **Fix Failed Tests**: Address all test failures before deploying the framework")
+        lines.append("2. **Root Cause Analysis**: Investigate why specific components failed validation")
+        lines.append("3. **Re-test After Fixes**: Run validation suite again after corrections")
+        lines.append("")
+    
+    lines.append("---")
+    lines.append("")
+    
+    # METHODOLOGY
+    lines.append("## METHODOLOGY")
+    lines.append("")
+    lines.append("### Test Design")
+    lines.append("")
+    lines.append("This validation follows a **black-box testing** approach with controlled mock inputs")
+    lines.append("and expected output verification. Each test is independent and deterministic.")
+    lines.append("")
+    lines.append("### Falsification Criteria")
+    lines.append("")
+    lines.append("The framework is considered **FALSIFIED** if:")
+    lines.append("- Any core functionality test fails")
+    lines.append("- Constant values don't match specification")
+    lines.append("- Mathematical calculations are incorrect")
+    lines.append("- Data structures don't match documented API")
+    lines.append("- Edge cases cause crashes or incorrect behavior")
+    lines.append("")
+    lines.append("### Validation Criteria")
+    lines.append("")
+    lines.append("The framework is considered **VALIDATED** if:")
+    lines.append("- All tests pass (100% success rate)")
+    lines.append("- Outputs match expected structure and content")
+    lines.append("- Edge cases handled gracefully")
+    lines.append("- Mathematical formulas produce correct results")
+    lines.append("- Convergence logic operates as specified")
+    lines.append("")
+    
+    lines.append("---")
+    lines.append("")
+    lines.append("## META-ANALYSIS")
+    lines.append("")
+    lines.append("This experiment represents a unique **meta-validation**: testing code that tests code.")
+    lines.append("The PR analysis framework is designed to validate research implementations, and this")
+    lines.append("validation tests the validator itself, creating a recursive layer of verification")
+    lines.append("aligned with the Z5D research methodology's emphasis on rigorous proof and falsification.")
+    lines.append("")
+    lines.append("The approach demonstrates that automated analysis frameworks can themselves be")
+    lines.append("systematically validated through comprehensive test suites with clear success criteria.")
+    
+    return "\n".join(lines)
+
 
 def main():
-    # PURPOSE: Main entry point for validation test suite
-    # INPUTS: None (command-line execution)
-    # PROCESS:
-    #   1. Print banner/header
-    #   2. Execute run_all_tests() [WILL BE IMPLEMENTED]
-    #   3. Generate findings report via generate_findings_report() [WILL BE IMPLEMENTED]
-    #   4. Write FINDINGS.md to experiment directory
-    #   5. Print summary to stdout
-    #   6. Exit with code 0 if all pass, 1 if any fail
-    # OUTPUTS: None (side effects: file creation, stdout)
-    # DEPENDENCIES: run_all_tests() [WILL BE IMPLEMENTED], generate_findings_report() [WILL BE IMPLEMENTED]
-    pass
+    """
+    IMPLEMENTED: Main entry point for validation test suite.
+    """
+    import sys
+    import os
+    
+    # Step 1: Print banner
+    print("\n" + "="*80)
+    print("PR ANALYSIS FRAMEWORK VALIDATION EXPERIMENT")
+    print("Experiment: PR-0037 Z5D Analysis Validation")
+    print("="*80)
+    
+    # Step 2: Execute all tests
+    test_results = run_all_tests()
+    
+    # Step 3: Generate findings report
+    findings_content = generate_findings_report(test_results)
+    
+    # Step 4: Write FINDINGS.md to experiment directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    findings_path = os.path.join(script_dir, "FINDINGS.md")
+    
+    try:
+        with open(findings_path, 'w') as f:
+            f.write(findings_content)
+        print(f"✓ FINDINGS.md written to: {findings_path}")
+    except Exception as e:
+        print(f"✗ Error writing FINDINGS.md: {str(e)}")
+        return 1
+    
+    # Step 5: Determine exit code
+    all_passed = all(success for success, _ in test_results.values())
+    exit_code = 0 if all_passed else 1
+    
+    # Step 6: Print final summary
+    print("\n" + "="*80)
+    if all_passed:
+        print("✓ VALIDATION COMPLETE: Framework VALIDATED")
+        print("All tests passed. The analyze_pr() framework is correct.")
+    else:
+        failed_count = sum(1 for success, _ in test_results.values() if not success)
+        print(f"✗ VALIDATION COMPLETE: Framework FALSIFIED")
+        print(f"{failed_count} test(s) failed. See FINDINGS.md for details.")
+    print("="*80 + "\n")
+    
+    return exit_code
 
 if __name__ == "__main__":
     main()
