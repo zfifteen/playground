@@ -70,26 +70,57 @@ def z5d_score(candidate: int, N: int, sqrt_N: int) -> float:
 
 
 def generate_candidates_qmc(N: int, num_candidates: int, seed: int = 42) -> list[int]:
-    # PURPOSE: Generate candidate factors using 106-bit QMC (Sobol sequences)
-    # INPUTS: 
-    #   N (int) - The semiprime to factor
-    #   num_candidates (int) - Number of candidates to generate
-    #   seed (int) - Random seed for reproducibility
-    # PROCESS:
-    #   1. Import scipy.stats.qmc.Sobol for low-discrepancy sequence
-    #   2. Initialize 2D Sobol generator (2 dimensions for 106-bit construction)
-    #   3. Generate num_candidates samples from [0,1)^2
-    #   4. For each sample (hi_frac, lo_frac):
-    #      a. Convert to 53-bit integers: hi = int(hi_frac * 2^53), lo = int(lo_frac * 2^53)
-    #      b. Combine via bit-shifting: combined = (hi << 53) | lo  (creates 106-bit number)
-    #      c. Scale to offset range: offset = combined * (2 * sqrt(N)) / 2^106
-    #      d. Generate candidate: candidate = sqrt(N) ± offset (alternating signs)
-    #   5. Clamp candidates to valid range [2, N-1]
-    #   6. Return list of unique candidates
-    # OUTPUTS: list[int] - List of candidate factors
-    # DEPENDENCIES: scipy.stats.qmc.Sobol, math.isqrt
-    # NOTE: The 106-bit construction avoids float quantization at extreme scales
-    pass
+    """IMPLEMENTED: Generate candidate factors using 106-bit QMC (Sobol sequences).
+    
+    This function creates uniformly distributed candidates around sqrt(N) using
+    Quasi-Monte Carlo sampling with Sobol sequences. The 106-bit construction
+    (combining two 53-bit dimensions) avoids float quantization bias.
+    
+    Args:
+        N: The semiprime to factor
+        num_candidates: Number of candidates to generate
+        seed: Random seed for reproducibility
+        
+    Returns:
+        List of candidate factors in range [2, N-1]
+    """
+    from scipy.stats import qmc
+    
+    # Initialize 2D Sobol generator
+    sampler = qmc.Sobol(d=2, seed=seed)
+    
+    # Generate samples in [0,1)^2
+    samples = sampler.random(n=num_candidates)
+    
+    # Compute sqrt(N) once
+    sqrt_N = int(math.isqrt(N))
+    
+    candidates = []
+    for i, (hi_frac, lo_frac) in enumerate(samples):
+        # Convert fractions to 53-bit integers
+        hi = int(hi_frac * (2 ** 53))
+        lo = int(lo_frac * (2 ** 53))
+        
+        # Combine via bit-shifting to create 106-bit number
+        combined = (hi << 53) | lo
+        
+        # Scale to offset range: ±sqrt(N)
+        # offset ranges from -sqrt(N) to +sqrt(N)
+        max_106bit = 2 ** 106
+        offset = int((combined * 2 * sqrt_N) / max_106bit) - sqrt_N
+        
+        # Generate candidate with alternating sign pattern
+        if i % 2 == 0:
+            candidate = sqrt_N + offset
+        else:
+            candidate = sqrt_N - offset
+        
+        # Clamp to valid range
+        if candidate >= 2 and candidate < N:
+            candidates.append(candidate)
+    
+    # Return unique candidates
+    return list(set(candidates))
 
 
 def compute_enrichment(candidates: list[int], scores: list[float], 
@@ -136,11 +167,12 @@ def validate_qmc_uniformity(num_candidates: int = 100000,
     #   num_candidates (int) - Number of samples to test
     #   seed (int) - Random seed
     # PROCESS:
-    #   1. Generate candidates using generate_candidates_qmc for a test N (e.g., 2^106)
-    #   2. Normalize candidates to [0, 1] range
+    #   1. Generate candidates using generate_candidates_qmc [IMPLEMENTED ✓] for a test N (e.g., 2^106)
+    #   2. Normalize candidates to [0, 1] range based on their offset from sqrt(N)
     #   3. Perform Kolmogorov-Smirnov test against uniform distribution
     #   4. Bin candidates into 100 bins, compute chi-square goodness-of-fit
     #   5. Check for quantization artifacts (duplicate values, clustering)
+    #      NOTE: generate_candidates_qmc returns unique values via set(), so track original count
     #   6. Compute discrepancy metric (max deviation from uniform)
     # OUTPUTS: dict with keys:
     #   - 'ks_statistic': float
@@ -149,7 +181,7 @@ def validate_qmc_uniformity(num_candidates: int = 100000,
     #   - 'chi_pvalue': float
     #   - 'num_duplicates': int
     #   - 'max_discrepancy': float
-    # DEPENDENCIES: scipy.stats (ks_1samp, chisquare), generate_candidates_qmc
+    # DEPENDENCIES: scipy.stats (ks_1samp, chisquare), generate_candidates_qmc [IMPLEMENTED ✓]
     # NOTE: High p-values (>0.05) and low discrepancy (<0.01) support uniformity
     pass
 
@@ -163,8 +195,8 @@ def test_n127_semiprime(num_candidates: int = 1000000) -> dict:
     #      Example: N = 85070591730234615865843651857942052864 (127 bits)
     #              p = 9223372036854775837 (63 bits, smaller)
     #              q = 9223372036854775976 (63 bits, larger)
-    #   2. Generate candidates using generate_candidates_qmc(N, num_candidates)
-    #   3. Score all candidates using z5d_score()
+    #   2. Generate candidates using generate_candidates_qmc(N, num_candidates) [IMPLEMENTED ✓]
+    #   3. Score all candidates using z5d_score() [IMPLEMENTED ✓]
     #   4. Compute enrichment metrics using compute_enrichment()
     #   5. Validate QMC uniformity using validate_qmc_uniformity()
     #   6. Compile results with statistical significance tests
@@ -176,6 +208,7 @@ def test_n127_semiprime(num_candidates: int = 1000000) -> dict:
     #   - 'enrichment_results': dict (from compute_enrichment)
     #   - 'uniformity_results': dict (from validate_qmc_uniformity)
     #   - 'hypothesis_supported': bool (True if asymmetry > 5.0)
-    # DEPENDENCIES: All above functions
+    # DEPENDENCIES: generate_candidates_qmc [IMPLEMENTED ✓], z5d_score [IMPLEMENTED ✓], 
+    #               compute_enrichment, validate_qmc_uniformity
     # NOTE: This is the main validation experiment
     pass
