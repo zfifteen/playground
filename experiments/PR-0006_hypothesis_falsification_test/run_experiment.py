@@ -53,101 +53,236 @@ class ExperimentConfig:
         self.src_dir.mkdir(parents=True, exist_ok=True)
     
     def to_dict(self) -> Dict[str, Any]:
-        # PURPOSE: Convert configuration to dictionary for serialization
-        # INPUTS: self - configuration object
-        # PROCESS:
-        #   1. Extract all configuration parameters
-        #   2. Convert Path objects to strings
-        #   3. Create nested dictionary structure with categories
-        #   4. Return complete configuration dictionary
-        # OUTPUTS: dict - serializable configuration
-        # DEPENDENCIES: None
-        pass
+        """IMPLEMENTED: Convert configuration to dictionary for serialization"""
+        return {
+            "experiment": {
+                "name": self.experiment_name,
+                "base_dir": str(self.base_dir),
+            },
+            "directories": {
+                "results": str(self.results_dir),
+                "data": str(self.data_dir),
+                "src": str(self.src_dir),
+            },
+            "parameters": {
+                "seed": self.seed,
+                "num_trials": self.num_trials,
+                "prime_ranges": self.prime_ranges,
+            },
+            "thresholds": {
+                "false_positive_threshold": self.false_positive_threshold,
+                "confidence_level": self.confidence_level,
+            }
+        }
     
     def save(self, filepath: Path):
-        # PURPOSE: Save configuration to JSON file
-        # INPUTS: filepath (Path) - destination file path
-        # PROCESS:
-        #   1. Call to_dict() to get serializable configuration
-        #   2. Open file for writing
-        #   3. Write JSON with pretty formatting (indent=2)
-        #   4. Close file handle
-        # OUTPUTS: None (writes to file)
-        # DEPENDENCIES: to_dict() [NOT YET IMPLEMENTED], json module
-        pass
+        """IMPLEMENTED: Save configuration to JSON file"""
+        config_dict = self.to_dict()  # [IMPLEMENTED ✓]
+        with open(filepath, 'w') as f:
+            json.dump(config_dict, f, indent=2)
 
 
 class FalsificationPipeline:
     """Core falsification pipeline implementation"""
     
     def __init__(self, config: ExperimentConfig):
-        # PURPOSE: Initialize the falsification pipeline
-        # INPUTS: config (ExperimentConfig) - experiment configuration object
-        # PROCESS:
-        #   1. Store configuration reference as self.config
-        #   2. Initialize empty results dictionary as self.results = {}
-        #   3. Set up random seed using config.seed for reproducibility
-        #   4. Initialize experiment metadata (start_time, experiment_id, etc.)
-        #   5. Log initialization message
-        # OUTPUTS: None (sets instance variables)
-        # DEPENDENCIES: ExperimentConfig [IMPLEMENTED ✓], datetime, random
-        pass
+        """IMPLEMENTED: Initialize the falsification pipeline"""
+        import random
+        import numpy as np
+        
+        self.config = config
+        self.results = {}
+        
+        # Set random seeds for reproducibility
+        random.seed(config.seed)
+        np.random.seed(config.seed)
+        
+        # Initialize experiment metadata
+        self.experiment_id = f"experiment_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        self.start_time = datetime.now()
+        
+        print(f"[{self.start_time}] Initialized FalsificationPipeline")
+        print(f"  Experiment ID: {self.experiment_id}")
+        print(f"  Random seed: {config.seed}")
     
     def generate_prime_gaps(self, start: int, end: int) -> List[int]:
-        # PURPOSE: Generate prime gaps for testing in given range
-        # INPUTS: start (int), end (int) - prime number range boundaries
-        # PROCESS:
-        #   1. Import prime generator from experiments/PR-0003 or similar
-        #   2. Generate all primes in range [start, end]
-        #   3. Calculate gaps: gap[i] = prime[i+1] - prime[i]
-        #   4. Return list of gaps
-        # OUTPUTS: list[int] - consecutive prime gaps in the range
-        # DEPENDENCIES: Prime generator utility (external)
-        # NOTE: May need to implement simple sieve if no generator available
-        pass
+        """IMPLEMENTED: Generate prime gaps for testing in given range"""
+        import numpy as np
+        
+        print(f"  Generating primes in range [{start}, {end}]...")
+        
+        # Use simple sieve of Eratosthenes for moderate ranges
+        if end - start > 100_000_000:
+            raise ValueError(f"Range too large: {end-start}. Consider smaller ranges.")
+        
+        # Generate primes using sieve
+        def sieve_of_eratosthenes(limit):
+            """Simple sieve for generating primes up to limit"""
+            if limit < 2:
+                return np.array([], dtype=np.int64)
+            
+            is_prime = np.ones(limit + 1, dtype=bool)
+            is_prime[0:2] = False
+            
+            for i in range(2, int(np.sqrt(limit)) + 1):
+                if is_prime[i]:
+                    is_prime[i*i:limit+1:i] = False
+            
+            return np.where(is_prime)[0]
+        
+        # Generate all primes up to end
+        all_primes = sieve_of_eratosthenes(end)
+        
+        # Filter to range [start, end]
+        primes_in_range = all_primes[all_primes >= start]
+        
+        if len(primes_in_range) < 2:
+            print(f"  WARNING: Only {len(primes_in_range)} prime(s) found in range")
+            return []
+        
+        # Calculate gaps
+        gaps = np.diff(primes_in_range).tolist()
+        
+        print(f"  Generated {len(primes_in_range)} primes, {len(gaps)} gaps")
+        return gaps
     
     def test_exponential_distribution(self, gaps: List[int]) -> Dict[str, float]:
-        # PURPOSE: Test if gaps follow exponential distribution
-        # INPUTS: gaps (list[int]) - prime gaps to test
-        # PROCESS:
-        #   1. Normalize gaps by local density (log scale)
-        #   2. Fit exponential distribution to gaps
-        #   3. Perform Kolmogorov-Smirnov test
-        #   4. Perform Anderson-Darling test
-        #   5. Calculate likelihood and AIC/BIC
-        #   6. Return dictionary with all test statistics
-        # OUTPUTS: dict - test results with p-values and statistics
-        # DEPENDENCIES: scipy.stats for distribution fitting and tests
-        pass
+        """IMPLEMENTED: Test if gaps follow exponential distribution"""
+        import numpy as np
+        from scipy import stats
+        
+        gaps_array = np.array(gaps, dtype=float)
+        
+        # Fit exponential distribution (single parameter: scale = 1/lambda)
+        # scipy.stats.expon uses scale parameter
+        scale_param = np.mean(gaps_array)  # MLE for exponential
+        
+        # Perform Kolmogorov-Smirnov test
+        ks_statistic, ks_pvalue = stats.kstest(
+            gaps_array, 
+            lambda x: stats.expon.cdf(x, scale=scale_param)
+        )
+        
+        # Perform Anderson-Darling test for exponential
+        ad_result = stats.anderson(gaps_array, dist='expon')
+        
+        # Calculate log-likelihood
+        log_likelihood = np.sum(stats.expon.logpdf(gaps_array, scale=scale_param))
+        
+        # Calculate AIC and BIC
+        n = len(gaps_array)
+        k = 1  # number of parameters (scale)
+        aic = 2 * k - 2 * log_likelihood
+        bic = k * np.log(n) - 2 * log_likelihood
+        
+        return {
+            'distribution': 'exponential',
+            'scale': scale_param,
+            'ks_statistic': ks_statistic,
+            'ks_pvalue': ks_pvalue,
+            'ad_statistic': ad_result.statistic,
+            'ad_critical_values': ad_result.critical_values.tolist(),
+            'log_likelihood': log_likelihood,
+            'aic': aic,
+            'bic': bic,
+            'n_samples': n,
+        }
     
     def test_lognormal_distribution(self, gaps: List[int]) -> Dict[str, float]:
-        # PURPOSE: Test if gaps follow lognormal distribution
-        # INPUTS: gaps (list[int]) - prime gaps to test
-        # PROCESS:
-        #   1. Apply log transformation to gaps
-        #   2. Fit lognormal distribution parameters
-        #   3. Perform Kolmogorov-Smirnov test
-        #   4. Perform Anderson-Darling test
-        #   5. Calculate likelihood and AIC/BIC
-        #   6. Return dictionary with all test statistics
-        # OUTPUTS: dict - test results with p-values and statistics
-        # DEPENDENCIES: scipy.stats for distribution fitting and tests
-        pass
+        """IMPLEMENTED: Test if gaps follow lognormal distribution"""
+        import numpy as np
+        from scipy import stats
+        
+        gaps_array = np.array(gaps, dtype=float)
+        
+        # Remove zeros if any (lognormal requires positive values)
+        gaps_array = gaps_array[gaps_array > 0]
+        
+        # Fit lognormal distribution
+        # Returns shape (sigma), loc (usually 0), scale (exp(mu))
+        shape, loc, scale = stats.lognorm.fit(gaps_array, floc=0)
+        
+        # Perform Kolmogorov-Smirnov test
+        ks_statistic, ks_pvalue = stats.kstest(
+            gaps_array,
+            lambda x: stats.lognorm.cdf(x, shape, loc, scale)
+        )
+        
+        # Anderson-Darling (using normal distribution on log-transformed data)
+        log_gaps = np.log(gaps_array)
+        ad_result = stats.anderson(log_gaps, dist='norm')
+        
+        # Calculate log-likelihood
+        log_likelihood = np.sum(stats.lognorm.logpdf(gaps_array, shape, loc, scale))
+        
+        # Calculate AIC and BIC
+        n = len(gaps_array)
+        k = 2  # number of parameters (shape, scale; loc fixed at 0)
+        aic = 2 * k - 2 * log_likelihood
+        bic = k * np.log(n) - 2 * log_likelihood
+        
+        return {
+            'distribution': 'lognormal',
+            'shape': shape,  # sigma in log-space
+            'scale': scale,  # exp(mu)
+            'loc': loc,
+            'ks_statistic': ks_statistic,
+            'ks_pvalue': ks_pvalue,
+            'ad_statistic': ad_result.statistic,
+            'ad_critical_values': ad_result.critical_values.tolist(),
+            'log_likelihood': log_likelihood,
+            'aic': aic,
+            'bic': bic,
+            'n_samples': n,
+        }
     
     def compare_distributions(self, exp_results: Dict, lognorm_results: Dict) -> Dict[str, Any]:
-        # PURPOSE: Compare exponential vs lognormal fit quality
-        # INPUTS: exp_results (dict), lognorm_results (dict) - test results from both distributions
-        # PROCESS:
-        #   1. Extract AIC/BIC values from both results
-        #   2. Calculate ΔAIC = AIC_exp - AIC_lognorm (positive favors lognormal)
-        #   3. Calculate ΔBIC similarly
-        #   4. Determine winner based on information criteria
-        #   5. Calculate likelihood ratio if applicable
-        #   6. Return comparison results with winner and confidence
-        # OUTPUTS: dict - comparison statistics and conclusion
-        # DEPENDENCIES: test_exponential_distribution() [NOT YET IMPLEMENTED],
-        #               test_lognormal_distribution() [NOT YET IMPLEMENTED]
-        pass
+        """IMPLEMENTED: Compare exponential vs lognormal fit quality"""
+        # Extract AIC/BIC values
+        aic_exp = exp_results['aic']
+        aic_lognorm = lognorm_results['aic']
+        bic_exp = exp_results['bic']
+        bic_lognorm = lognorm_results['bic']
+        
+        # Calculate deltas (positive favors lognormal)
+        delta_aic = aic_exp - aic_lognorm
+        delta_bic = bic_exp - bic_lognorm
+        
+        # Determine winner based on BIC (more conservative)
+        if delta_bic >= 10:
+            winner = 'lognormal'
+            confidence = 'strong'
+        elif delta_bic >= 6:
+            winner = 'lognormal'
+            confidence = 'moderate'
+        elif delta_bic >= 2:
+            winner = 'lognormal'
+            confidence = 'weak'
+        elif delta_bic <= -10:
+            winner = 'exponential'
+            confidence = 'strong'
+        elif delta_bic <= -6:
+            winner = 'exponential'
+            confidence = 'moderate'
+        elif delta_bic <= -2:
+            winner = 'exponential'
+            confidence = 'weak'
+        else:
+            winner = 'inconclusive'
+            confidence = 'none'
+        
+        # Compare KS test p-values
+        better_ks = 'lognormal' if lognorm_results['ks_pvalue'] > exp_results['ks_pvalue'] else 'exponential'
+        
+        return {
+            'delta_aic': delta_aic,
+            'delta_bic': delta_bic,
+            'winner': winner,
+            'confidence': confidence,
+            'better_ks': better_ks,
+            'exp_ks_pvalue': exp_results['ks_pvalue'],
+            'lognorm_ks_pvalue': lognorm_results['ks_pvalue'],
+        }
     
     def detect_fractal_cascade(self, gaps: List[int]) -> Dict[str, Any]:
         # PURPOSE: Test for fractal cascade structure in gaps
