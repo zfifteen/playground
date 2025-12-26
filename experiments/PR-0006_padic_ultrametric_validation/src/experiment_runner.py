@@ -40,209 +40,365 @@ SEMIPRIME_DEFINITIONS = [
 
 
 def is_prime_miller_rabin(n: int, k: int = 10) -> bool:
-    # PURPOSE: Miller-Rabin primality test
-    # INPUTS:
-    #   n (int) - number to test
-    #   k (int) - number of rounds (default 10)
-    # PROCESS:
-    #   1. Handle n < 2: return False
-    #   2. Handle n in [2, 3]: return True
-    #   3. Handle n % 2 == 0: return False
-    #   4. Write n-1 as 2^r * d: r=0, d=n-1; while d%2==0: r+=1, d//=2
-    #   5. For k rounds:
-    #      - Pick random a in [2, n-1]
-    #      - x = pow(a, d, n)
-    #      - If x == 1 or x == n-1: continue
-    #      - For r-1 iterations: x = pow(x, 2, n); if x == n-1: break; else: return False
-    #   6. Return True (probably prime)
-    # OUTPUTS: bool - True if probably prime, False if definitely composite
-    # DEPENDENCIES: random.randrange, pow
-    pass
+    """IMPLEMENTED: Miller-Rabin primality test."""
+    if n < 2:
+        return False
+    if n == 2 or n == 3:
+        return True
+    if n % 2 == 0:
+        return False
+    
+    # Write n-1 as 2^r * d
+    r, d = 0, n - 1
+    while d % 2 == 0:
+        r += 1
+        d //= 2
+    
+    # Witnesses to test
+    for _ in range(k):
+        a = random.randrange(2, n - 1)
+        x = pow(a, d, n)
+        
+        if x == 1 or x == n - 1:
+            continue
+        
+        for _ in range(r - 1):
+            x = pow(x, 2, n)
+            if x == n - 1:
+                break
+        else:
+            return False
+    
+    return True
 
 
 def validate_semiprime(p: int, q: int, N: int, name: str) -> bool:
-    # PURPOSE: Validate that N = p × q and that p, q are prime
-    # INPUTS:
-    #   p, q (int) - claimed factors
-    #   N (int) - claimed semiprime
-    #   name (str) - identifier for error messages
-    # PROCESS:
-    #   1. Compute computed_N = p * q
-    #   2. Assert computed_N == N, raise AssertionError with message otherwise
-    #   3. Assert p > 1 and q > 1
-    #   4. Assert gcd(p, q) == 1 (coprimality)
-    #   5. For small numbers (p < 10000 or q < 10000):
-    #      - Define is_small_prime(n): trial division primality check
-    #      - Assert is_small_prime(p) if p < 10000
-    #      - Assert is_small_prime(q) if q < 10000
-    #   6. Return True
-    # OUTPUTS: bool - always True if no assertion fails
-    # DEPENDENCIES: math.gcd
-    # NOTE: Raises AssertionError if validation fails
-    pass
+    """IMPLEMENTED: Validate that N = p × q and that p, q are prime."""
+    # Check multiplication
+    computed_N = p * q
+    assert computed_N == N, (
+        f"{name}: N mismatch! p×q = {computed_N} but N = {N}"
+    )
+    
+    # Check that p and q are greater than 1
+    assert p > 1 and q > 1, f"{name}: factors must be > 1, got p={p}, q={q}"
+    
+    # Check that p and q are coprime
+    assert math.gcd(p, q) == 1, f"{name}: factors must be coprime, got gcd(p,q)={math.gcd(p, q)}"
+    
+    # For small numbers, verify primality
+    if p < 10000 or q < 10000:
+        # Quick primality check for small numbers
+        def is_small_prime(n):
+            if n < 2:
+                return False
+            if n == 2:
+                return True
+            if n % 2 == 0:
+                return False
+            for i in range(3, int(n**0.5) + 1, 2):
+                if n % i == 0:
+                    return False
+            return True
+        
+        if p < 10000:
+            assert is_small_prime(p), f"{name}: p={p} is not prime"
+        if q < 10000:
+            assert is_small_prime(q), f"{name}: q={q} is not prime"
+    
+    return True
 
 
 # Build validated semiprime dataset
-# PROCESS:
-#   1. Initialize SEMIPRIMES = []
-#   2. For each (p, q, name, description) in SEMIPRIME_DEFINITIONS:
-#      - Compute N = p * q
-#      - Call validate_semiprime(p, q, N, name)
-#      - If passes: append to SEMIPRIMES, print "✓ Validated {name}"
-#      - If fails: print error, raise exception
-# DEPENDENCIES: validate_semiprime
-# NOTE: This runs at module import time to ensure dataset integrity
-SEMIPRIMES = []  # Populated after validate_semiprime is implemented
+SEMIPRIMES = []
+for p, q, name, description in SEMIPRIME_DEFINITIONS:
+    N = p * q
+    try:
+        validate_semiprime(p, q, N, name)
+        SEMIPRIMES.append({
+            "name": name,
+            "N": N,
+            "p": p,
+            "q": q,
+            "description": description
+        })
+        print(f"✓ Validated {name}: N = {N}")
+    except AssertionError as e:
+        print(f"✗ FAILED validation for {name}: {e}")
+        raise
 
 
 def integer_sqrt(n: int) -> int:
-    # PURPOSE: Compute integer square root of n using Newton's method
-    # INPUTS: n (int) - non-negative integer
-    # PROCESS:
-    #   1. If n < 0: raise ValueError
-    #   2. If n < 2: return n
-    #   3. Newton's method: x = n, y = (x + 1) // 2
-    #   4. While y < x: x = y, y = (x + n // x) // 2
-    #   5. Return x
-    # OUTPUTS: int - integer square root
-    # DEPENDENCIES: None
-    pass
+    """IMPLEMENTED: Compute integer square root using Newton's method."""
+    if n < 0:
+        raise ValueError("Cannot compute sqrt of negative number")
+    if n < 2:
+        return n
+    
+    # Newton's method for integer sqrt
+    x = n
+    y = (x + 1) // 2
+    while y < x:
+        x = y
+        y = (x + n // x) // 2
+    return x
 
 
 def generate_search_candidates(N: int, sqrt_N: int, num_candidates: int, 
                                window_pct: float = 15.0, seed: int = None) -> List[int]:
-    # PURPOSE: Generate candidate factors uniformly in a window around sqrt(N)
-    # INPUTS:
-    #   N (int) - the semiprime
-    #   sqrt_N (int) - integer square root of N
-    #   num_candidates (int) - number of candidates to generate
-    #   window_pct (float) - window size as percentage of sqrt_N (default 15%)
-    #   seed (int, optional) - random seed for reproducibility
-    # PROCESS:
-    #   1. If seed is not None: random.seed(seed)
-    #   2. window_radius = max(50, int(sqrt_N * window_pct / 100))
-    #   3. search_min = max(3, sqrt_N - window_radius)
-    #   4. search_max = sqrt_N + window_radius
-    #   5. candidates = []
-    #   6. For num_candidates iterations:
-    #      - cand = random.randint(search_min, search_max)
-    #      - If cand % 2 == 0: cand += 1 (make odd)
-    #      - If cand > search_max: cand = search_max or search_max-1 (odd)
-    #      - Append to candidates
-    #   7. Return candidates
-    # OUTPUTS: List[int] - list of odd candidate integers
-    # DEPENDENCIES: random.seed, random.randint
-    pass
+    """IMPLEMENTED: Generate candidate factors uniformly in a window around sqrt(N)."""
+    if seed is not None:
+        random.seed(seed)
+    
+    # Define search window - ensure minimum size for small semiprimes
+    window_radius = max(50, int(sqrt_N * window_pct / 100))
+    search_min = max(3, sqrt_N - window_radius)
+    search_max = sqrt_N + window_radius
+    
+    candidates = []
+    for _ in range(num_candidates):
+        # Generate random candidate in window
+        cand = random.randint(search_min, search_max)
+        
+        # Make it odd (since N is odd, factors must be odd)
+        if cand % 2 == 0:
+            cand += 1
+        
+        # Keep in bounds
+        if cand > search_max:
+            cand = search_max if search_max % 2 == 1 else search_max - 1
+        
+        candidates.append(cand)
+    
+    return candidates
 
 
 def gcd(a: int, b: int) -> int:
-    # PURPOSE: Compute GCD using Euclidean algorithm
-    # INPUTS: a, b (int) - integers
-    # PROCESS:
-    #   1. Return math.gcd(a, b)
-    # OUTPUTS: int - greatest common divisor
-    # DEPENDENCIES: math.gcd
-    pass
+    """IMPLEMENTED: Compute GCD using Euclidean algorithm."""
+    return math.gcd(a, b)
 
 
 def run_gva_search(N: int, sqrt_N: int, metric_name: str, 
                    score_func, num_candidates: int = 500,
                    window_pct: float = 15.0, seed: int = None) -> Dict:
-    # PURPOSE: Run GVA-style factor search using the given metric
-    # INPUTS:
-    #   N (int) - semiprime to factor
-    #   sqrt_N (int) - integer sqrt of N
-    #   metric_name (str) - "baseline" or "padic"
-    #   score_func - scoring function to use
-    #   num_candidates (int) - number of candidates (default 500)
-    #   window_pct (float) - search window size (default 15.0)
-    #   seed (int, optional) - random seed
-    # PROCESS:
-    #   1. start_time = time.time()
-    #   2. Generate candidates using generate_search_candidates()
-    #   3. Score all candidates:
-    #      - scored_candidates = []
-    #      - For each cand: 
-    #        - If metric_name == "padic": score = score_func(cand, sqrt_N, N)
-    #        - Else: score = score_func(cand, sqrt_N)
-    #        - Append (cand, score) to scored_candidates
-    #   4. Sort scored_candidates by score (lower is better)
-    #   5. Try top candidates with GCD:
-    #      - factor_found = None, iterations_to_factor = 0, gcd_checks = 0
-    #      - For each (cand, score) in sorted list:
-    #        - gcd_checks += 1
-    #        - g = gcd(cand, N)
-    #        - If g > 1 and g < N: factor_found = g, iterations_to_factor = i+1, break
-    #   6. elapsed_time = time.time() - start_time
-    #   7. Compute best_score, worst_score from scored_candidates
-    #   8. Return result dict with all metrics
-    # OUTPUTS: Dict - results including factor_found, iterations, runtime, scores
-    # DEPENDENCIES: time.time, generate_search_candidates, gcd
-    pass
+    """IMPLEMENTED: Run GVA-style factor search using the given metric."""
+    start_time = time.time()
+    
+    # Generate candidates
+    candidates = generate_search_candidates(N, sqrt_N, num_candidates, window_pct, seed)
+    
+    # Score all candidates
+    scored_candidates = []
+    for cand in candidates:
+        try:
+            if metric_name == "padic":
+                score = score_func(cand, sqrt_N, N)
+            else:
+                score = score_func(cand, sqrt_N)
+            scored_candidates.append((cand, score))
+        except Exception as e:
+            # Skip candidates that cause errors
+            continue
+    
+    # Sort by score (lower is better)
+    scored_candidates.sort(key=lambda x: x[1])
+    
+    # Try top candidates with GCD
+    factor_found = None
+    iterations_to_factor = 0
+    gcd_checks = 0
+    
+    for i, (cand, score) in enumerate(scored_candidates):
+        gcd_checks += 1
+        g = gcd(cand, N)
+        
+        if g > 1 and g < N:
+            # Found a nontrivial factor!
+            factor_found = g
+            iterations_to_factor = i + 1
+            break
+    
+    elapsed_time = time.time() - start_time
+    
+    # Compute alignment score (how well-ranked was the best candidate?)
+    best_score = scored_candidates[0][1] if scored_candidates else None
+    worst_score = scored_candidates[-1][1] if scored_candidates else None
+    
+    result = {
+        "metric": metric_name,
+        "num_candidates": num_candidates,
+        "window_pct": window_pct,
+        "factor_found": factor_found is not None,
+        "factor_value": factor_found,
+        "iterations_to_factor": iterations_to_factor if factor_found else None,
+        "gcd_checks": gcd_checks,
+        "runtime_seconds": elapsed_time,
+        "best_score": best_score,
+        "worst_score": worst_score,
+        "total_scored": len(scored_candidates)
+    }
+    
+    return result
 
 
 def run_experiment_on_semiprime(semiprime_data: Dict, num_candidates: int = 500,
                                window_pct: float = 15.0, seed: int = 42) -> Tuple[Dict, Dict]:
-    # PURPOSE: Run complete experiment on one semiprime with both metrics
-    # INPUTS:
-    #   semiprime_data (Dict) - contains N, p, q, name, description
-    #   num_candidates (int) - candidates per search (default 500)
-    #   window_pct (float) - window size (default 15.0)
-    #   seed (int) - random seed (default 42)
-    # PROCESS:
-    #   1. Extract N from semiprime_data
-    #   2. Compute sqrt_N using integer_sqrt(N)
-    #   3. Print header with semiprime info
-    #   4. Run baseline search:
-    #      - Print "[1/2] Running with BASELINE..."
-    #      - baseline_result = run_gva_search(N, sqrt_N, "baseline", baseline_score, ...)
-    #      - Print results (factor_found, factor_value, iterations, runtime)
-    #   5. Run p-adic search:
-    #      - Print "[2/2] Running with P-ADIC..."
-    #      - padic_result = run_gva_search(N, sqrt_N, "padic", padic_score, ...)
-    #      - Print results
-    #   6. Return (baseline_result, padic_result)
-    # OUTPUTS: Tuple[Dict, Dict] - baseline and p-adic results
-    # DEPENDENCIES: integer_sqrt, run_gva_search, baseline_score, padic_score
-    pass
+    """IMPLEMENTED: Run complete experiment on one semiprime with both metrics."""
+    N = semiprime_data["N"]
+    sqrt_N = integer_sqrt(N)
+    
+    print(f"\n{'='*80}")
+    print(f"Testing: {semiprime_data['name']}")
+    print(f"N = {N}")
+    print(f"p = {semiprime_data['p']}, q = {semiprime_data['q']}")
+    print(f"sqrt(N) ≈ {sqrt_N}")
+    print(f"{'='*80}")
+    
+    # Run with baseline metric
+    print(f"\n[1/2] Running with BASELINE (Riemannian/Z5D) metric...")
+    baseline_result = run_gva_search(
+        N, sqrt_N, "baseline", baseline_score,
+        num_candidates, window_pct, seed
+    )
+    print(f"  Factor found: {baseline_result['factor_found']}")
+    if baseline_result['factor_found']:
+        print(f"  Factor: {baseline_result['factor_value']}")
+        print(f"  Iterations: {baseline_result['iterations_to_factor']}")
+    print(f"  Runtime: {baseline_result['runtime_seconds']:.4f}s")
+    
+    # Run with p-adic metric
+    print(f"\n[2/2] Running with P-ADIC ultrametric...")
+    padic_result = run_gva_search(
+        N, sqrt_N, "padic", padic_score,
+        num_candidates, window_pct, seed
+    )
+    print(f"  Factor found: {padic_result['factor_found']}")
+    if padic_result['factor_found']:
+        print(f"  Factor: {padic_result['factor_value']}")
+        print(f"  Iterations: {padic_result['iterations_to_factor']}")
+    print(f"  Runtime: {padic_result['runtime_seconds']:.4f}s")
+    
+    return baseline_result, padic_result
 
 
 def save_results_to_csv(results: List[Dict], output_path: Path):
-    # PURPOSE: Save experiment results to CSV file
-    # INPUTS:
-    #   results (List[Dict]) - list of result dictionaries
-    #   output_path (Path) - output file path
-    # PROCESS:
-    #   1. If not results: print "No results", return
-    #   2. Ensure output_path.parent.mkdir(parents=True, exist_ok=True)
-    #   3. Get all field names: fieldnames = sorted(set of all keys from all dicts)
-    #   4. Open file with csv.DictWriter
-    #   5. Write header and rows
-    #   6. Print "Results saved to: {output_path}"
-    # OUTPUTS: None (side effect: writes CSV file)
-    # DEPENDENCIES: csv.DictWriter, Path.mkdir
-    pass
+    """IMPLEMENTED: Save experiment results to CSV file."""
+    if not results:
+        print("No results to save")
+        return
+    
+    # Ensure output directory exists
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Get all field names
+    fieldnames = set()
+    for result in results:
+        fieldnames.update(result.keys())
+    fieldnames = sorted(fieldnames)
+    
+    with open(output_path, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(results)
+    
+    print(f"\nResults saved to: {output_path}")
 
 
 def main():
-    # PURPOSE: Main experiment runner orchestrator
-    # PROCESS:
-    #   1. Print experiment header
-    #   2. Define parameters: NUM_CANDIDATES=500, WINDOW_PCT=15.0, SEED=42
-    #   3. Setup output directory: output_dir = Path(__file__).parent.parent / "results"
-    #   4. Run experiments:
-    #      - all_results = []
-    #      - For each semiprime_data in SEMIPRIMES:
-    #        - Try: run_experiment_on_semiprime(), add metadata, append results
-    #        - Except: print error, continue
-    #   5. Save results to timestamped CSV
-    #   6. Print summary:
-    #      - Count successes for each metric
-    #      - Print comparison table
-    #   7. Print "Experiment complete!"
-    # OUTPUTS: None (side effects: CSV file, console output)
-    # DEPENDENCIES: All previous functions, SEMIPRIMES dataset
-    pass
+    """IMPLEMENTED: Main experiment runner orchestrator."""
+    print("="*80)
+    print("p-adic vs Riemannian GVA Factor-Finding Experiment")
+    print("="*80)
+    
+    # Experiment parameters
+    NUM_CANDIDATES = 500  # Number of candidates per search
+    WINDOW_PCT = 15.0     # Search window: ±15% around sqrt(N)
+    SEED = 42             # Random seed for reproducibility
+    
+    # Output directory
+    output_dir = Path(__file__).parent.parent / "results"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Run experiments
+    all_results = []
+    
+    for semiprime_data in SEMIPRIMES:
+        try:
+            baseline_result, padic_result = run_experiment_on_semiprime(
+                semiprime_data, NUM_CANDIDATES, WINDOW_PCT, SEED
+            )
+            
+            # Add semiprime metadata to results
+            for result in [baseline_result, padic_result]:
+                result["semiprime_name"] = semiprime_data["name"]
+                result["N"] = str(semiprime_data["N"])  # Store as string for large numbers
+                result["true_p"] = str(semiprime_data["p"])
+                result["true_q"] = str(semiprime_data["q"])
+                result["description"] = semiprime_data["description"]
+            
+            all_results.append(baseline_result)
+            all_results.append(padic_result)
+            
+        except Exception as e:
+            print(f"\nERROR processing {semiprime_data['name']}: {e}")
+            import traceback
+            traceback.print_exc()
+            continue
+    
+    # Save results
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    output_csv = output_dir / f"padic_gva_results_{timestamp}.csv"
+    save_results_to_csv(all_results, output_csv)
+    
+    # Print summary
+    print("\n" + "="*80)
+    print("EXPERIMENT SUMMARY")
+    print("="*80)
+    
+    baseline_successes = sum(1 for r in all_results if r["metric"] == "baseline" and r["factor_found"])
+    padic_successes = sum(1 for r in all_results if r["metric"] == "padic" and r["factor_found"])
+    total_semiprimes = len(SEMIPRIMES)
+    
+    print(f"\nTotal semiprimes tested: {total_semiprimes}")
+    print(f"Baseline metric successes: {baseline_successes}/{total_semiprimes}")
+    print(f"p-adic metric successes: {padic_successes}/{total_semiprimes}")
+    
+    # Compare performance where both found factors
+    print("\n" + "-"*80)
+    print("Detailed comparison:")
+    print("-"*80)
+    print(f"{'Semiprime':<20} {'Baseline':<15} {'p-adic':<15} {'Winner':<15}")
+    print("-"*80)
+    
+    for i in range(0, len(all_results), 2):
+        baseline = all_results[i]
+        padic = all_results[i+1] if i+1 < len(all_results) else None
+        
+        if padic is None:
+            continue
+        
+        name = baseline["semiprime_name"]
+        baseline_iters = baseline["iterations_to_factor"] if baseline["factor_found"] else "Failed"
+        padic_iters = padic["iterations_to_factor"] if padic["factor_found"] else "Failed"
+        
+        # Determine winner
+        if baseline["factor_found"] and not padic["factor_found"]:
+            winner = "Baseline"
+        elif padic["factor_found"] and not baseline["factor_found"]:
+            winner = "p-adic"
+        elif baseline["factor_found"] and padic["factor_found"]:
+            if baseline["iterations_to_factor"] < padic["iterations_to_factor"]:
+                winner = "Baseline"
+            elif padic["iterations_to_factor"] < baseline["iterations_to_factor"]:
+                winner = "p-adic"
+            else:
+                winner = "Tie"
+        else:
+            winner = "Both failed"
+        
+        print(f"{name:<20} {str(baseline_iters):<15} {str(padic_iters):<15} {winner:<15}")
+    
+    print("\nExperiment complete!")
 
 
 if __name__ == "__main__":
