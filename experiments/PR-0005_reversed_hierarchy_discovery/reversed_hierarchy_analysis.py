@@ -218,8 +218,6 @@ def analyze_convergence_rates(A):
         
         print(f"{k:>3} {initial_A:>15.6f} {final_A:>15.6f} {rate:>15.6f} {interpretation:>25}")
     
-    print("\n✓ KEY FINDING: All moments have NEGATIVE rates (converging)")
-    print("  BUT: Higher k have MORE NEGATIVE rates (converging FASTER)")
     
     # Rank by convergence speed
     rates = {}
