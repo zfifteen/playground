@@ -21,8 +21,7 @@ multiplicative sieve structure.
 This script provides complete verification and visualization.
 """
 
-from math import factorial, log, exp
-import sys
+from math import factorial, log
 
 # ============================================================================
 # SECTION 1: THEORETICAL BACKGROUND
