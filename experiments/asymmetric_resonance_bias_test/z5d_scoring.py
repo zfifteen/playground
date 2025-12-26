@@ -126,38 +126,87 @@ def generate_candidates_qmc(N: int, num_candidates: int, seed: int = 42) -> list
 def compute_enrichment(candidates: list[int], scores: list[float], 
                        N: int, p: int, q: int, 
                        threshold_percentile: float = 90.0) -> dict:
-    # PURPOSE: Compute enrichment metrics for near-p and near-q regions
-    # INPUTS:
-    #   candidates (list[int]) - Generated candidate factors
-    #   scores (list[float]) - Corresponding Z5D scores
-    #   N (int) - The semiprime (N = p * q)
-    #   p (int) - Smaller prime factor (p < sqrt(N))
-    #   q (int) - Larger prime factor (q > sqrt(N))
-    #   threshold_percentile (float) - Percentile for "high-scoring" classification
-    # PROCESS:
-    #   1. Calculate sqrt(N) and determine offsets: p_offset = (sqrt(N) - p) / sqrt(N) * 100
-    #                                                q_offset = (q - sqrt(N)) / sqrt(N) * 100
-    #   2. Define proximity windows: near_p = candidates within ±2% of p
-    #                                 near_q = candidates within ±2% of q
-    #   3. Compute score threshold from percentile (e.g., 90th percentile)
-    #   4. Count high-scoring candidates in each region:
-    #      - near_p_high = count(score > threshold AND in near_p window)
-    #      - near_q_high = count(score > threshold AND in near_q window)
-    #   5. Compute baseline expected counts (uniform distribution assumption)
-    #   6. Calculate enrichment ratios: enrichment_p = near_p_high / expected_p
-    #                                    enrichment_q = near_q_high / expected_q
-    #   7. Compute asymmetry metric: asymmetry = enrichment_q / enrichment_p
-    # OUTPUTS: dict with keys:
-    #   - 'near_p_count': int
-    #   - 'near_q_count': int  
-    #   - 'near_p_enrichment': float (ratio vs uniform)
-    #   - 'near_q_enrichment': float (ratio vs uniform)
-    #   - 'asymmetry_ratio': float (q_enrichment / p_enrichment)
-    #   - 'p_offset_percent': float
-    #   - 'q_offset_percent': float
-    # DEPENDENCIES: numpy for percentile calculation
-    # NOTE: Asymmetry ratio > 5.0 supports hypothesis of bias toward q
-    pass
+    """IMPLEMENTED: Compute enrichment metrics for near-p and near-q regions.
+    
+    Analyzes whether high-scoring candidates cluster asymmetrically near the
+    larger prime factor (q) vs. the smaller factor (p).
+    
+    Args:
+        candidates: Generated candidate factors
+        scores: Corresponding Z5D scores
+        N: The semiprime (N = p * q)
+        p: Smaller prime factor (p < sqrt(N))
+        q: Larger prime factor (q > sqrt(N))
+        threshold_percentile: Percentile for "high-scoring" classification
+        
+    Returns:
+        Dictionary with enrichment metrics and asymmetry ratio
+    """
+    import numpy as np
+    
+    # Calculate sqrt(N) and offsets
+    sqrt_N = int(math.isqrt(N))
+    p_offset_percent = ((sqrt_N - p) / sqrt_N) * 100
+    q_offset_percent = ((q - sqrt_N) / sqrt_N) * 100
+    
+    # Define proximity windows (±2% of sqrt_N)
+    window_size = int(0.02 * sqrt_N)
+    near_p_min = p - window_size
+    near_p_max = p + window_size
+    near_q_min = q - window_size
+    near_q_max = q + window_size
+    
+    # Compute score threshold
+    score_threshold = np.percentile(scores, threshold_percentile)
+    
+    # Count high-scoring candidates in each region
+    near_p_high = 0
+    near_q_high = 0
+    total_near_p = 0
+    total_near_q = 0
+    
+    for cand, score in zip(candidates, scores):
+        # Check if in near-p window
+        if near_p_min <= cand <= near_p_max:
+            total_near_p += 1
+            if score >= score_threshold:
+                near_p_high += 1
+        
+        # Check if in near-q window
+        if near_q_min <= cand <= near_q_max:
+            total_near_q += 1
+            if score >= score_threshold:
+                near_q_high += 1
+    
+    # Compute baseline expected counts (uniform distribution)
+    total_high_scoring = sum(1 for s in scores if s >= score_threshold)
+    window_fraction = (2 * window_size) / (2 * sqrt_N)  # Fraction of search space
+    expected_in_window = total_high_scoring * window_fraction
+    
+    # Calculate enrichment ratios
+    enrichment_p = near_p_high / expected_in_window if expected_in_window > 0 else 0
+    enrichment_q = near_q_high / expected_in_window if expected_in_window > 0 else 0
+    
+    # Compute asymmetry metric
+    if enrichment_p > 0:
+        asymmetry_ratio = enrichment_q / enrichment_p
+    else:
+        asymmetry_ratio = float('inf') if enrichment_q > 0 else 0
+    
+    return {
+        'near_p_count': near_p_high,
+        'near_q_count': near_q_high,
+        'total_near_p': total_near_p,
+        'total_near_q': total_near_q,
+        'near_p_enrichment': enrichment_p,
+        'near_q_enrichment': enrichment_q,
+        'asymmetry_ratio': asymmetry_ratio,
+        'p_offset_percent': p_offset_percent,
+        'q_offset_percent': q_offset_percent,
+        'score_threshold': score_threshold,
+        'total_high_scoring': total_high_scoring,
+        'expected_in_window': expected_in_window
+    }
 
 
 def validate_qmc_uniformity(num_candidates: int = 100000, 
@@ -197,7 +246,8 @@ def test_n127_semiprime(num_candidates: int = 1000000) -> dict:
     #              q = 9223372036854775976 (63 bits, larger)
     #   2. Generate candidates using generate_candidates_qmc(N, num_candidates) [IMPLEMENTED ✓]
     #   3. Score all candidates using z5d_score() [IMPLEMENTED ✓]
-    #   4. Compute enrichment metrics using compute_enrichment()
+    #   4. Compute enrichment metrics using compute_enrichment() [IMPLEMENTED ✓]
+    #      NOTE: enrichment now includes detailed metrics for validation
     #   5. Validate QMC uniformity using validate_qmc_uniformity()
     #   6. Compile results with statistical significance tests
     # OUTPUTS: dict with keys:
@@ -205,10 +255,10 @@ def test_n127_semiprime(num_candidates: int = 1000000) -> dict:
     #   - 'p': int (smaller factor)
     #   - 'q': int (larger factor)
     #   - 'num_candidates': int
-    #   - 'enrichment_results': dict (from compute_enrichment)
+    #   - 'enrichment_results': dict (from compute_enrichment [IMPLEMENTED ✓])
     #   - 'uniformity_results': dict (from validate_qmc_uniformity)
     #   - 'hypothesis_supported': bool (True if asymmetry > 5.0)
     # DEPENDENCIES: generate_candidates_qmc [IMPLEMENTED ✓], z5d_score [IMPLEMENTED ✓], 
-    #               compute_enrichment, validate_qmc_uniformity
+    #               compute_enrichment [IMPLEMENTED ✓], validate_qmc_uniformity
     # NOTE: This is the main validation experiment
     pass
