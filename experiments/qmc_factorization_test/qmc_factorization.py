@@ -121,9 +121,9 @@ def generate_anosov_sequence(dimension: int, n_points: int, matrix: Optional[np.
     if abs(abs(det) - 1.0) > 1e-10:
         raise ValueError(f"Matrix must be unimodular (det=±1), got det={det:.6f}")
     
-    # Initialize starting point
-    np.random.seed(seed)
-    point = np.random.uniform(0, 1, size=2)
+    # Initialize starting point with local random generator
+    rng = np.random.default_rng(seed)
+    point = rng.uniform(0, 1, size=2)
     
     # Generate sequence
     sequence = np.zeros((n_points, 2))
@@ -141,8 +141,8 @@ def generate_random_sequence(dimension: int, n_points: int, seed: int = 42) -> n
     
     Baseline for comparison, expected discrepancy O(1/sqrt(N)).
     """
-    np.random.seed(seed)
-    return np.random.uniform(0, 1, size=(n_points, dimension))
+    rng = np.random.default_rng(seed)
+    return rng.uniform(0, 1, size=(n_points, dimension))
 
 
 # ============================================================================
@@ -251,11 +251,12 @@ def compute_star_discrepancy(sequence: np.ndarray, n_boxes: int = 1000) -> float
     n_points, dimension = sequence.shape
     max_discrepancy = 0.0
     
-    np.random.seed(42)  # For reproducible box selection
+    # Use local random generator for reproducible box selection
+    rng = np.random.default_rng(42)
     
     for _ in range(n_boxes):
         # Random box corner in [0,1)^d
-        box_corner = np.random.uniform(0, 1, size=dimension)
+        box_corner = rng.uniform(0, 1, size=dimension)
         
         # Count points in box [0, box_corner]
         in_box = np.all(sequence <= box_corner, axis=1)
