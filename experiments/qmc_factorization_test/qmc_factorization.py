@@ -47,34 +47,33 @@ def divisor_count(n: int) -> int:
 
 
 def curvature(n: int, d_n: Optional[int] = None) -> float:
-    # PURPOSE: Compute Z-Framework curvature metric
-    # INPUTS: 
-    #   n (int) - the number to compute curvature for
-    #   d_n (int, optional) - precomputed divisor count to avoid recomputation
-    # PROCESS:
-    #   1. If d_n not provided, compute using divisor_count() [IMPLEMENTED ✓]
-    #   2. Apply formula: κ(n) = d(n) · ln(n+1) / e²
-    #   3. Return floating-point result
-    # OUTPUTS: float - curvature value κ(n)
-    # DEPENDENCIES: divisor_count() [IMPLEMENTED ✓], math.log, E_SQUARED constant
-    # NOTE: This metric is central to Z-Framework geometric embedding
-    pass
+    """
+    IMPLEMENTED: Compute Z-Framework curvature metric κ(n) = d(n) · ln(n+1) / e²
+    
+    This metric is central to the geometric embedding of integers.
+    """
+    if d_n is None:
+        d_n = divisor_count(n)
+    return d_n * log(n + 1) / E_SQUARED
 
 
 def theta_prime(n: int, phi: float = PHI) -> float:
-    # PURPOSE: Geodesic transformation for toroidal embedding
-    # INPUTS:
-    #   n (int) - input number
-    #   phi (float) - golden ratio (default PHI constant)
-    # PROCESS:
-    #   1. Compute n mod φ (modular arithmetic with float)
-    #   2. Normalize: residue = (n mod φ) / φ
-    #   3. Apply geodesic transformation: θ'(n) = φ · residue
-    #   4. Handle edge cases for n ≤ 0
-    # OUTPUTS: float - transformed coordinate on torus
-    # DEPENDENCIES: PHI constant, basic arithmetic
-    # NOTE: Maps integers to [0, φ) interval for geometric methods
-    pass
+    """
+    IMPLEMENTED: Geodesic transformation for toroidal embedding
+    
+    Maps integers to [0, φ) interval for geometric methods.
+    """
+    if n <= 0:
+        return 0.0
+    
+    # Compute n mod φ
+    n_mod_phi = n % phi
+    
+    # Normalize to [0, 1)
+    normalized_residue = n_mod_phi / phi
+    
+    # Apply geodesic transformation
+    return phi * normalized_residue
 
 
 # ============================================================================
@@ -82,74 +81,68 @@ def theta_prime(n: int, phi: float = PHI) -> float:
 # ============================================================================
 
 def generate_sobol_sequence(dimension: int, n_points: int, seed: int = 42) -> np.ndarray:
-    # PURPOSE: Generate Sobol low-discrepancy sequence for QMC sampling
-    # INPUTS:
-    #   dimension (int) - dimensionality of sequence (typically 2-10)
-    #   n_points (int) - number of points to generate
-    #   seed (int) - random seed for reproducibility
-    # PROCESS:
-    #   1. Initialize scipy.stats.qmc.Sobol sampler with dimension
-    #   2. Set random seed for reproducibility
-    #   3. Generate n_points samples
-    #   4. Return as numpy array shape (n_points, dimension)
-    # OUTPUTS: np.ndarray - Sobol sequence points
-    # DEPENDENCIES: scipy.stats.qmc.Sobol
-    # NOTE: Sobol sequences have O(log^d(N)/N) discrepancy vs O(1/sqrt(N)) for MC
-    pass
+    """
+    IMPLEMENTED: Generate Sobol low-discrepancy sequence for QMC sampling
+    
+    Sobol sequences have O(log^d(N)/N) discrepancy vs O(1/sqrt(N)) for MC.
+    """
+    sampler = qmc.Sobol(d=dimension, scramble=True, seed=seed)
+    return sampler.random(n=n_points)
 
 
 def generate_halton_sequence(dimension: int, n_points: int, seed: int = 42) -> np.ndarray:
-    # PURPOSE: Generate Halton low-discrepancy sequence for comparison
-    # INPUTS:
-    #   dimension (int) - dimensionality of sequence
-    #   n_points (int) - number of points to generate
-    #   seed (int) - random seed for reproducibility
-    # PROCESS:
-    #   1. Initialize scipy.stats.qmc.Halton sampler with dimension
-    #   2. Set random seed
-    #   3. Generate n_points samples
-    #   4. Return as numpy array shape (n_points, dimension)
-    # OUTPUTS: np.ndarray - Halton sequence points
-    # DEPENDENCIES: scipy.stats.qmc.Halton
-    # NOTE: Halton uses coprime bases, good for low dimensions (d ≤ 10)
-    pass
+    """
+    IMPLEMENTED: Generate Halton low-discrepancy sequence for comparison
+    
+    Halton uses coprime bases, good for low dimensions (d ≤ 10).
+    """
+    sampler = qmc.Halton(d=dimension, scramble=True, seed=seed)
+    return sampler.random(n=n_points)
 
 
 def generate_anosov_sequence(dimension: int, n_points: int, matrix: Optional[np.ndarray] = None, seed: int = 42) -> np.ndarray:
-    # PURPOSE: Generate sequence using Anosov automorphism (Selberg framework)
-    # INPUTS:
-    #   dimension (int) - must be 2 for current implementation
-    #   n_points (int) - number of points to generate
-    #   matrix (np.ndarray, optional) - 2x2 unimodular matrix, default high-entropy one
-    #   seed (int) - random seed for initial point
-    # PROCESS:
-    #   1. If matrix is None, use default high-entropy matrix [[10,1],[9,1]] from Selberg tutorial
-    #   2. Validate matrix is unimodular (det = ±1)
-    #   3. Initialize starting point [x0, y0] with seed
-    #   4. For each iteration i in range(n_points):
-    #      - Apply matrix multiplication: [x_i, y_i] = M @ [x_{i-1}, y_{i-1}]
-    #      - Take fractional part: [x_i, y_i] = [x_i % 1.0, y_i % 1.0]
-    #   5. Return as numpy array shape (n_points, 2)
-    # OUTPUTS: np.ndarray - Anosov-generated sequence on unit torus
-    # DEPENDENCIES: numpy.linalg.det for validation, matrix multiplication
-    # NOTE: Integrates Selberg-Ruelle framework for QMC sampling
-    pass
+    """
+    IMPLEMENTED: Generate sequence using Anosov automorphism (Selberg framework)
+    
+    Integrates Selberg-Ruelle framework for QMC sampling.
+    Currently only supports dimension=2.
+    """
+    if dimension != 2:
+        raise ValueError("Anosov sequence currently only supports dimension=2")
+    
+    # Use default high-entropy matrix from Selberg tutorial if not provided
+    if matrix is None:
+        matrix = np.array([[10, 1], [9, 1]], dtype=float)
+    else:
+        matrix = np.array(matrix, dtype=float)
+    
+    # Validate unimodular (det = ±1)
+    det = np.linalg.det(matrix)
+    if abs(abs(det) - 1.0) > 1e-10:
+        raise ValueError(f"Matrix must be unimodular (det=±1), got det={det:.6f}")
+    
+    # Initialize starting point
+    np.random.seed(seed)
+    point = np.random.uniform(0, 1, size=2)
+    
+    # Generate sequence
+    sequence = np.zeros((n_points, 2))
+    for i in range(n_points):
+        sequence[i] = point
+        # Apply matrix transformation and take fractional part
+        point = (matrix @ point) % 1.0
+    
+    return sequence
 
 
 def generate_random_sequence(dimension: int, n_points: int, seed: int = 42) -> np.ndarray:
-    # PURPOSE: Generate standard Monte Carlo random sequence as baseline
-    # INPUTS:
-    #   dimension (int) - dimensionality
-    #   n_points (int) - number of points
-    #   seed (int) - random seed for reproducibility
-    # PROCESS:
-    #   1. Set numpy random seed
-    #   2. Generate uniform random points in [0,1)^dimension
-    #   3. Return as numpy array shape (n_points, dimension)
-    # OUTPUTS: np.ndarray - random sequence
-    # DEPENDENCIES: numpy.random
-    # NOTE: Baseline for comparison, expected discrepancy O(1/sqrt(N))
-    pass
+    """
+    IMPLEMENTED: Generate standard Monte Carlo random sequence as baseline
+    
+    Baseline for comparison, expected discrepancy O(1/sqrt(N)).
+    """
+    np.random.seed(seed)
+    return np.random.uniform(0, 1, size=(n_points, dimension))
 
 
 # ============================================================================
@@ -179,17 +172,17 @@ def gva_sample_point_to_factor_candidate(point: np.ndarray, n: int, curvature_n:
     # INPUTS:
     #   point (np.ndarray) - sample point in [0,1)^d from QMC/MC sequence
     #   n (int) - the semiprime to factor
-    #   curvature_n (float) - precomputed κ(n) for geometric embedding
+    #   curvature_n (float) - precomputed κ(n) for geometric embedding using curvature() [IMPLEMENTED ✓]
     # PROCESS:
     #   1. Extract coordinates [x, y] from point (use first 2 dimensions)
-    #   2. Apply geodesic transformation using theta_prime():
+    #   2. Apply geodesic transformation using theta_prime() [IMPLEMENTED ✓]:
     #      - theta_x = theta_prime(int(x * n))
     #      - theta_y = theta_prime(int(y * n))
     #   3. Combine with curvature: candidate = int((theta_x + theta_y) * curvature_n) % n
     #   4. Ensure candidate is in valid range [2, sqrt(n)]
     #   5. Return candidate factor to test
     # OUTPUTS: int - candidate factor
-    # DEPENDENCIES: theta_prime() [NOT IMPLEMENTED], curvature() [NOT IMPLEMENTED]
+    # DEPENDENCIES: theta_prime() [IMPLEMENTED ✓], curvature() [IMPLEMENTED ✓]
     # NOTE: This is the core GVA geometric mapping from sampling space to factor space
     pass
 
@@ -201,7 +194,7 @@ def gva_factorize_with_sequence(n: int, sequence: np.ndarray, max_iterations: in
     #   sequence (np.ndarray) - QMC or MC sampling sequence
     #   max_iterations (int) - maximum number of samples to try
     # PROCESS:
-    #   1. Precompute curvature_n = curvature(n) for reuse
+    #   1. Precompute curvature_n = curvature(n) [IMPLEMENTED ✓] for reuse
     #   2. Initialize results dict with counters
     #   3. For each point in sequence (up to max_iterations):
     #      a. Map point to factor candidate using gva_sample_point_to_factor_candidate()
@@ -210,7 +203,7 @@ def gva_factorize_with_sequence(n: int, sequence: np.ndarray, max_iterations: in
     #      d. Record iteration count and return {success: True, factors: (p,q), iterations: i}
     #   4. If max_iterations reached without success, return {success: False, iterations: max_iterations}
     # OUTPUTS: Dict with keys {success, factors, iterations, sequence_type}
-    # DEPENDENCIES: curvature() [NOT IMPLEMENTED], gva_sample_point_to_factor_candidate() [NOT IMPLEMENTED]
+    # DEPENDENCIES: curvature() [IMPLEMENTED ✓], gva_sample_point_to_factor_candidate() [NOT IMPLEMENTED]
     # NOTE: Core experimental function comparing QMC vs MC performance
     pass
 
@@ -353,11 +346,29 @@ def main():
 
 
 if __name__ == "__main__":
-    # Quick validation that divisor_count works
+    # Quick validation that implemented functions work
     print("=== QMC Factorization Experiment ===")
-    print("IMPLEMENTED UNITS: divisor_count()")
-    print(f"Testing divisor_count(12) = {divisor_count(12)} (expected: 6)")
-    print(f"Testing divisor_count(28) = {divisor_count(28)} (expected: 6)")
-    print(f"Testing divisor_count(100) = {divisor_count(100)} (expected: 9)")
-    print("\nAll other units are STUBBED with detailed specifications.")
+    print("IMPLEMENTED UNITS: divisor_count(), curvature(), theta_prime()")
+    print("                   generate_sobol_sequence(), generate_halton_sequence(),")
+    print("                   generate_anosov_sequence(), generate_random_sequence()")
+    
+    print(f"\nTesting divisor_count(12) = {divisor_count(12)} (expected: 6)")
+    print(f"Testing curvature(100) = {curvature(100):.6f}")
+    print(f"Testing theta_prime(100) = {theta_prime(100):.6f}")
+    
+    # Test sequence generators
+    print(f"\n--- Testing Sequence Generators ---")
+    sobol = generate_sobol_sequence(2, 5, seed=42)
+    print(f"Sobol sequence (2D, 5 points): shape={sobol.shape}, first point={sobol[0]}")
+    
+    halton = generate_halton_sequence(2, 5, seed=42)
+    print(f"Halton sequence (2D, 5 points): shape={halton.shape}, first point={halton[0]}")
+    
+    anosov = generate_anosov_sequence(2, 5, seed=42)
+    print(f"Anosov sequence (2D, 5 points): shape={anosov.shape}, first point={anosov[0]}")
+    
+    random_seq = generate_random_sequence(2, 5, seed=42)
+    print(f"Random sequence (2D, 5 points): shape={random_seq.shape}, first point={random_seq[0]}")
+    
+    print("\nRemaining units are STUBBED with detailed specifications.")
     print("Run with --help for usage when implementation is complete.")
