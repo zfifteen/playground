@@ -132,20 +132,49 @@ def scan_divisors(n: int, theta: float = 0.0, max_k: int = None) -> np.ndarray:
 
 
 def detect_peaks(resonance_values: np.ndarray, threshold: float = None) -> List[int]:
-    # PURPOSE: Identify peaks in resonance signal that may indicate factors
-    # INPUTS:
-    #   - resonance_values (np.ndarray): Output from scan_divisors() [IMPLEMENTED ✓]
-    #   - threshold (float): Minimum resonance value to consider (default: mean + 2*std)
-    # PROCESS:
-    #   1. Calculate threshold if not provided (mean + 2*std)
-    #   2. Find local maxima using comparison with neighbors
-    #   3. Filter peaks above threshold
-    #   4. Convert array indices back to divisor values (add 2)
-    #   5. Return sorted list of candidate factors
-    # OUTPUTS: List[int] - candidate divisor positions (not indices)
-    # DEPENDENCIES: numpy statistical functions
-    # NOTES: May include false positives; needs validation against true factors
-    pass
+    """
+    IMPLEMENTED: Identify peaks in resonance signal that may indicate factors.
+    
+    Args:
+        resonance_values: Output from scan_divisors()
+        threshold: Minimum resonance value to consider (default: mean + 2*std)
+    
+    Returns:
+        List[int] - candidate divisor values (not indices)
+        May include false positives; needs validation against true factors
+    """
+    if len(resonance_values) == 0:
+        return []
+    
+    # Calculate threshold if not provided (mean + 2*std)
+    if threshold is None:
+        mean_val = np.mean(resonance_values)
+        std_val = np.std(resonance_values)
+        threshold = mean_val + 2.0 * std_val
+    
+    # Find local maxima using comparison with neighbors
+    # A point is a local maximum if it's greater than both neighbors
+    peaks_indices = []
+    
+    for i in range(len(resonance_values)):
+        # Get neighbor values (handle edges)
+        left_val = resonance_values[i-1] if i > 0 else -np.inf
+        center_val = resonance_values[i]
+        right_val = resonance_values[i+1] if i < len(resonance_values)-1 else -np.inf
+        
+        # Check if local maximum
+        is_local_max = (center_val > left_val) and (center_val > right_val)
+        
+        # Filter peaks above threshold
+        if is_local_max and center_val >= threshold:
+            peaks_indices.append(i)
+    
+    # Convert array indices back to divisor values (add 2)
+    # Because scan_divisors starts from divisor=2 at index=0
+    candidate_divisors = [idx + 2 for idx in peaks_indices]
+    
+    # Return sorted list of candidate factors
+    return sorted(candidate_divisors)
 
 
 def evaluate_factor_detection(semiprime: int, true_factors: Tuple[int, int], 
@@ -154,7 +183,7 @@ def evaluate_factor_detection(semiprime: int, true_factors: Tuple[int, int],
     # INPUTS:
     #   - semiprime (int): The number that was factored
     #   - true_factors (tuple): (p1, p2) true prime factors
-    #   - detected_peaks (list): Candidate factors from detect_peaks()
+    #   - detected_peaks (list): Candidate factors from detect_peaks() [IMPLEMENTED ✓]
     #   - tolerance (int): Allow detection within ±tolerance of true factor
     # PROCESS:
     #   1. Check if p1 is in detected_peaks (within tolerance)
