@@ -1,5 +1,17 @@
 # Scale-Invariant Resonance Alignment Falsification Test
 
+## Quick Start
+
+```bash
+cd experiments/resonance_alignment_test
+python test_hypothesis.py
+```
+
+**Results**: See `FINDINGS.md` for the complete report.  
+**Verdict**: FALSIFIED
+
+---
+
 ## Purpose
 
 This experiment tests the following hypothesis:
@@ -60,10 +72,9 @@ Following incremental coder protocol:
 
 ## Dependencies
 
-```bash
-# Required for full test suite
-pip install numpy scipy matplotlib
-```
+**None!** This implementation uses only Python standard library (no external dependencies).
+
+The test runs with Python 3.6+ and requires no package installation.
 
 ## Running the Test
 
