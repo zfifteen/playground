@@ -95,33 +95,99 @@ def generate_mock_pr_data(
 # ---------------------- Validation Tests ----------------------
 
 def test_basic_functionality() -> Tuple[bool, str]:
-    # PURPOSE: Test that analyze_pr() executes without errors
-    # INPUTS: Standard mock PR data
-    # PROCESS:
-    #   1. Generate mock PR data using generate_mock_pr_data()
-    #   2. Call analyze_pr() with the mock data
-    #   3. Verify result is AnalysisResult instance
-    #   4. Check that all required fields are present
-    #   5. Validate data types of return values
-    # OUTPUTS: (bool, str) - (success, message)
-    # DEPENDENCIES: generate_mock_pr_data() [IMPLEMENTED ✓], analyze_pr()
-    pass
+    """
+    IMPLEMENTED: Test that analyze_pr() executes without errors.
+    """
+    try:
+        # Step 1: Generate standard mock PR data
+        pr_data = generate_mock_pr_data()
+        
+        # Step 2: Call analyze_pr()
+        result = analyze_pr(pr_data)
+        
+        # Step 3: Verify result is AnalysisResult instance
+        if not isinstance(result, AnalysisResult):
+            return False, f"Expected AnalysisResult, got {type(result).__name__}"
+        
+        # Step 4: Check all required fields are present
+        required_fields = ['summary', 'sub_issues', 'insights', 'recommendations', 'converged', 'method']
+        for field in required_fields:
+            if not hasattr(result, field):
+                return False, f"Missing required field: {field}"
+        
+        # Step 5: Validate data types
+        if not isinstance(result.summary, str):
+            return False, f"summary should be str, got {type(result.summary).__name__}"
+        if not isinstance(result.sub_issues, list):
+            return False, f"sub_issues should be list, got {type(result.sub_issues).__name__}"
+        if not isinstance(result.insights, list):
+            return False, f"insights should be list, got {type(result.insights).__name__}"
+        if not isinstance(result.recommendations, list):
+            return False, f"recommendations should be list, got {type(result.recommendations).__name__}"
+        if not isinstance(result.converged, bool):
+            return False, f"converged should be bool, got {type(result.converged).__name__}"
+        if not isinstance(result.method, str):
+            return False, f"method should be str, got {type(result.method).__name__}"
+        
+        # All checks passed
+        return True, f"analyze_pr() executed successfully with {len(result.sub_issues)} sub-issues, {len(result.insights)} insights, {len(result.recommendations)} recommendations"
+        
+    except Exception as e:
+        return False, f"Exception during execution: {str(e)}"
 
 def test_summary_generation() -> Tuple[bool, str]:
-    # PURPOSE: Validate that summary contains expected keywords and structure
-    # INPUTS: Mock PR data with known characteristics
-    # PROCESS:
-    #   1. Generate mock data with include_fixes=True
-    #   2. Execute analyze_pr()
-    #   3. Parse summary string for required components:
-    #      - Hypothesis mention (Z5D, asymmetric, enrichment)
-    #      - Scope quantification (modules, LOC, configs, docs)
-    #      - Fixes description (threshold, robustness)
-    #      - Spec alignment score (should be ~0.70 given _C_LOGICAL_GAP=-0.15)
-    #   4. Verify formula: alignment = 0.85 + _C_LOGICAL_GAP
-    # OUTPUTS: (bool, str) - (pass/fail, details)
-    # DEPENDENCIES: generate_mock_pr_data() [IMPLEMENTED ✓], analyze_pr()
-    pass
+    """
+    IMPLEMENTED: Validate that summary contains expected keywords and structure.
+    """
+    try:
+        # Step 1: Generate mock data with fixes
+        pr_data = generate_mock_pr_data(include_fixes=True)
+        
+        # Step 2: Execute analyze_pr()
+        result = analyze_pr(pr_data)
+        summary = result.summary
+        
+        # Step 3: Check for required hypothesis components
+        required_keywords = {
+            'hypothesis': ['Z5D', 'asymmetric', 'enrichment'],
+            'scope': ['modules', 'LOC', 'configs', 'docs'],
+            'fixes': ['threshold', 'robustness', 'fixed'],
+            'alignment': ['Spec alignment']
+        }
+        
+        missing = []
+        for category, keywords in required_keywords.items():
+            category_found = False
+            for keyword in keywords:
+                if keyword.lower() in summary.lower():
+                    category_found = True
+                    break
+            if not category_found:
+                missing.append(f"{category} ({', '.join(keywords)})")
+        
+        if missing:
+            return False, f"Summary missing categories: {'; '.join(missing)}"
+        
+        # Step 4: Verify alignment score calculation
+        # Expected: 0.85 + _C_LOGICAL_GAP = 0.85 + (-0.15) = 0.70
+        expected_alignment = 0.85 + _C_LOGICAL_GAP
+        
+        # Parse alignment from summary
+        import re
+        alignment_match = re.search(r'Spec alignment:\s*([\d.]+)', summary)
+        if not alignment_match:
+            return False, "Could not find 'Spec alignment' score in summary"
+        
+        parsed_alignment = float(alignment_match.group(1))
+        
+        # Allow small floating point tolerance
+        if abs(parsed_alignment - expected_alignment) > 0.01:
+            return False, f"Alignment score mismatch: expected {expected_alignment:.2f}, got {parsed_alignment:.2f}"
+        
+        return True, f"Summary valid with alignment={parsed_alignment:.2f}, contains all required components"
+        
+    except Exception as e:
+        return False, f"Exception during summary validation: {str(e)}"
 
 def test_sub_issues_detection() -> Tuple[bool, str]:
     # PURPOSE: Verify that all expected sub-issues are identified
