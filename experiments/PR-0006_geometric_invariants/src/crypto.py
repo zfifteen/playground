@@ -12,7 +12,7 @@ Key features:
 """
 
 import numpy as np
-from typing import List, Tuple, Optional, Callable
+from typing import List, Tuple, Optional, Callable, Union
 from .z_framework import curvature_metric, golden_ratio_phase, PHI
 
 

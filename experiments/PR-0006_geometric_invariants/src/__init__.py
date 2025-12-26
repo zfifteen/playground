@@ -11,12 +11,14 @@ Core components:
 """
 
 from .z_framework import (
+    divisor_count,
     curvature_metric,
     golden_ratio_phase,
     ZFrameworkCalculator
 )
 
 __all__ = [
+    'divisor_count',
     'curvature_metric',
     'golden_ratio_phase',
     'ZFrameworkCalculator',
