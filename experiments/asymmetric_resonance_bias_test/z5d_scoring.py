@@ -291,29 +291,77 @@ def validate_qmc_uniformity(num_candidates: int = 100000,
 
 
 def test_n127_semiprime(num_candidates: int = 1000000) -> dict:
-    # PURPOSE: Test Z5D scoring on a 127-bit semiprime and measure asymmetry
-    # INPUTS:
-    #   num_candidates (int) - Number of candidates to generate and score
-    # PROCESS:
-    #   1. Define N127: a 127-bit semiprime with known factors p, q
-    #      Example: N = 85070591730234615865843651857942052864 (127 bits)
-    #              p = 9223372036854775837 (63 bits, smaller)
-    #              q = 9223372036854775976 (63 bits, larger)
-    #   2. Generate candidates using generate_candidates_qmc(N, num_candidates) [IMPLEMENTED ✓]
-    #   3. Score all candidates using z5d_score() [IMPLEMENTED ✓]
-    #   4. Compute enrichment metrics using compute_enrichment() [IMPLEMENTED ✓]
-    #      NOTE: enrichment now includes detailed metrics for validation
-    #   5. Validate QMC uniformity using validate_qmc_uniformity() [IMPLEMENTED ✓]
-    #      NOTE: uniformity validation includes KS test, chi-square, and discrepancy metrics
-    #   6. Compile results with statistical significance tests
-    # OUTPUTS: dict with keys:
-    #   - 'N': int (the semiprime)
-    #   - 'p': int (smaller factor)
-    #   - 'q': int (larger factor)
-    #   - 'num_candidates': int
-    #   - 'enrichment_results': dict (from compute_enrichment [IMPLEMENTED ✓])
-    #   - 'uniformity_results': dict (from validate_qmc_uniformity [IMPLEMENTED ✓])
-    #   - 'hypothesis_supported': bool (True if asymmetry > 5.0)
-    # DEPENDENCIES: All functions implemented ✓
-    # NOTE: This is the main validation experiment - ready to implement
-    pass
+    """IMPLEMENTED: Test Z5D scoring on a 127-bit semiprime and measure asymmetry.
+    
+    This is the main validation experiment that tests the asymmetric resonance
+    bias hypothesis on a known 127-bit semiprime.
+    
+    Args:
+        num_candidates: Number of candidates to generate and score
+        
+    Returns:
+        Complete experimental results dictionary
+    """
+    import time
+    
+    # Define a 127-bit semiprime with known factors
+    # Using well-known large primes near 2^63
+    p = 9223372036854775783  # Large prime < 2^63
+    q = 9223372036854775837  # Larger prime ≈ 2^63
+    N = p * q  # 127-bit semiprime
+    
+    print(f"Testing N₁₂₇ semiprime:")
+    print(f"  N = {N}")
+    print(f"  p = {p} ({p.bit_length()} bits)")
+    print(f"  q = {q} ({q.bit_length()} bits)")
+    print(f"  N bits: {N.bit_length()}")
+    print()
+    
+    # Generate candidates
+    print(f"Generating {num_candidates:,} candidates using 106-bit QMC...")
+    start = time.time()
+    candidates = generate_candidates_qmc(N, num_candidates)
+    gen_time = time.time() - start
+    print(f"  Generated {len(candidates):,} unique candidates in {gen_time:.2f}s")
+    print()
+    
+    # Score all candidates
+    print("Scoring candidates with Z5D...")
+    start = time.time()
+    sqrt_N = int(math.isqrt(N))
+    scores = [z5d_score(c, N, sqrt_N) for c in candidates]
+    score_time = time.time() - start
+    print(f"  Scored {len(scores):,} candidates in {score_time:.2f}s")
+    print()
+    
+    # Compute enrichment
+    print("Computing enrichment metrics...")
+    enrichment_results = compute_enrichment(candidates, scores, N, p, q)
+    print(f"  Near-p enrichment: {enrichment_results['near_p_enrichment']:.2f}x")
+    print(f"  Near-q enrichment: {enrichment_results['near_q_enrichment']:.2f}x")
+    print(f"  Asymmetry ratio: {enrichment_results['asymmetry_ratio']:.2f}")
+    print()
+    
+    # Validate QMC uniformity
+    print("Validating QMC uniformity...")
+    uniformity_results = validate_qmc_uniformity(num_candidates=min(100000, num_candidates))
+    print(f"  KS p-value: {uniformity_results['ks_pvalue']:.4f}")
+    print(f"  Chi-square p-value: {uniformity_results['chi_pvalue']:.4f}")
+    print(f"  Max discrepancy: {uniformity_results['max_discrepancy']:.6f}")
+    print()
+    
+    # Determine if hypothesis is supported
+    hypothesis_supported = enrichment_results['asymmetry_ratio'] >= 5.0
+    
+    return {
+        'N': N,
+        'p': p,
+        'q': q,
+        'num_candidates': len(candidates),
+        'num_requested': num_candidates,
+        'generation_time': gen_time,
+        'scoring_time': score_time,
+        'enrichment_results': enrichment_results,
+        'uniformity_results': uniformity_results,
+        'hypothesis_supported': hypothesis_supported
+    }
