@@ -65,6 +65,8 @@ The true factors are located at:
 - **p = 10,508,623,501,177,419,659** (10.39% below √N)
 - **q = 13,086,849,276,577,416,863** (11.59% above √N)
 
+**Why this is challenging**: This semiprime has moderately unbalanced factors. The ratio p/q ≈ 0.803 means factors are not close to √N, which confounds many factorization algorithms that assume balanced factors.
+
 Distance from √N to nearest factor (p):
 - Distance: 1,218,472,126,649,964,661
 - Required strides: ~104 stride units
@@ -198,14 +200,19 @@ Expected output: Algorithm fails to find factors in ~30 seconds.
 
 ## Comparison with Standard Methods
 
-For context, this 127-bit semiprime can be factored using:
+For context, this 127-bit semiprime presents a moderate challenge:
 
-1. **Trial division** with optimization: Would require testing ~10^10 candidates
-2. **Pollard's rho**: Expected ~10^9 operations (feasible in minutes)
-3. **Quadratic sieve**: Overkill for this size but would work in seconds
-4. **GNFS**: Also overkill but would work quickly
+1. **Trial division** with optimization: Would require testing ~10^19 candidates (infeasible)
+2. **Pollard's rho**: Expected ~10^9 operations but struggled in practice (>120 seconds without success)
+3. **Quadratic sieve**: Would be appropriate for this size and would likely succeed
+4. **GNFS**: Overkill but would work
 
-The claimed algorithm offers no advantage over established methods and fails where they succeed.
+**Important observation**: The semiprime N = 137524771864208156028430259349934309717 is indeed challenging due to its unbalanced factors (p and q differ by ~24%). Standard probabilistic methods like Pollard's rho can struggle with such cases.
+
+However, the claimed "adaptive stride ring search" algorithm offers **no advantage** over established methods:
+- It completed faster (29.24s vs >120s for Pollard's rho) but **failed completely** (found no factors)
+- Success rate: 0% vs. eventually succeeding for standard methods given enough time
+- The speed is meaningless when the algorithm doesn't work
 
 ## Conclusion
 
