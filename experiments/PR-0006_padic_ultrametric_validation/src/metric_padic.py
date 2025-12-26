@@ -16,125 +16,176 @@ from typing import List, Dict
 
 
 def prime_factorization_small(n: int, max_prime: int = 1000) -> Dict[int, int]:
-    # PURPOSE: Compute partial prime factorization for small primes
-    # INPUTS:
-    #   n (int) - integer to factor
-    #   max_prime (int) - maximum prime to try (default 1000)
-    # PROCESS:
-    #   1. Handle n <= 1: return empty dict
-    #   2. Factor out 2: count powers, add to dict
-    #   3. Try odd primes from 3 up to min(sqrt(n), max_prime)
-    #   4. For each prime p that divides n:
-    #      - Count powers by repeated division
-    #      - Add p: count to factors dict
-    #   5. If remaining n > 1 and n <= max_prime, add n:1
-    # OUTPUTS: dict - mapping prime -> exponent
-    # DEPENDENCIES: None
-    pass
+    """IMPLEMENTED: Compute partial prime factorization for small primes."""
+    if n <= 1:
+        return {}
+    
+    factors = {}
+    
+    # Handle 2 separately
+    if n % 2 == 0:
+        count = 0
+        while n % 2 == 0:
+            count += 1
+            n //= 2
+        factors[2] = count
+    
+    # Try odd primes
+    p = 3
+    while p * p <= n and p <= max_prime:
+        if n % p == 0:
+            count = 0
+            while n % p == 0:
+                count += 1
+                n //= p
+            factors[p] = count
+        p += 2
+    
+    # If n > 1 here, it's either prime or has large factors
+    if n > 1 and n <= max_prime:
+        factors[n] = 1
+    
+    return factors
 
 
 def padic_valuation(n: int, p: int) -> int:
-    # PURPOSE: Compute p-adic valuation v_p(n) = highest power of p dividing n
-    # INPUTS:
-    #   n (int) - integer (must be non-zero)
-    #   p (int) - prime base
-    # PROCESS:
-    #   1. Handle n == 0: return float('inf')
-    #   2. Validate p > 1, raise ValueError otherwise
-    #   3. Take abs(n)
-    #   4. Count how many times we can divide by p: valuation = 0
-    #   5. While n % p == 0: valuation += 1, n //= p
-    #   6. Return valuation
-    # OUTPUTS: int - p-adic valuation
-    # DEPENDENCIES: None
-    pass
+    """IMPLEMENTED: Compute p-adic valuation v_p(n) = highest power of p dividing n."""
+    if n == 0:
+        return float('inf')  # Convention: v_p(0) = ∞
+    
+    if p <= 1:
+        raise ValueError(f"Prime p must be > 1, got {p}")
+    
+    n = abs(n)
+    valuation = 0
+    
+    while n % p == 0:
+        valuation += 1
+        n //= p
+    
+    return valuation
 
 
 def padic_norm(n: int, p: int) -> float:
-    # PURPOSE: Compute p-adic norm ||n||_p = p^(-v_p(n))
-    # INPUTS:
-    #   n (int) - integer
-    #   p (int) - prime base
-    # PROCESS:
-    #   1. Handle n == 0: return 0.0
-    #   2. Get valuation v = padic_valuation(n, p)
-    #   3. Return p ** (-v)
-    # OUTPUTS: float - p-adic norm
-    # DEPENDENCIES: padic_valuation
-    pass
+    """IMPLEMENTED: Compute p-adic norm ||n||_p = p^(-v_p(n))."""
+    if n == 0:
+        return 0.0
+    
+    v = padic_valuation(n, p)
+    return p ** (-v)
 
 
 def padic_distance(a: int, b: int, p: int) -> float:
-    # PURPOSE: Compute p-adic distance d_p(a, b) = ||a - b||_p
-    # INPUTS:
-    #   a, b (int) - integers
-    #   p (int) - prime base
-    # PROCESS:
-    #   1. Return padic_norm(a - b, p)
-    # OUTPUTS: float - p-adic distance (satisfies ultrametric property)
-    # DEPENDENCIES: padic_norm [NOTE: depends on padic_valuation]
-    pass
+    """IMPLEMENTED: Compute p-adic distance d_p(a, b) = ||a - b||_p."""
+    return padic_norm(a - b, p)
 
 
 def multi_padic_distance(a: int, b: int, primes: List[int], weights: List[float] = None) -> float:
-    # PURPOSE: Compute weighted sum of p-adic distances over multiple primes
-    # INPUTS:
-    #   a, b (int) - integers
-    #   primes (List[int]) - list of primes to use
-    #   weights (List[float], optional) - weights for each prime (default: equal)
-    # PROCESS:
-    #   1. If weights is None: weights = [1.0 / len(primes)] * len(primes)
-    #   2. Validate len(weights) == len(primes), raise ValueError otherwise
-    #   3. total_distance = 0.0
-    #   4. For each (p, w) in zip(primes, weights):
-    #      - total_distance += w * padic_distance(a, b, p)
-    #   5. Return total_distance
-    # OUTPUTS: float - weighted sum of p-adic distances
-    # DEPENDENCIES: padic_distance [NOTE: requires padic_norm, padic_valuation]
-    pass
+    """IMPLEMENTED: Compute weighted sum of p-adic distances over multiple primes."""
+    if weights is None:
+        weights = [1.0 / len(primes)] * len(primes)
+    
+    if len(weights) != len(primes):
+        raise ValueError("Number of weights must match number of primes")
+    
+    total_distance = 0.0
+    for p, w in zip(primes, weights):
+        total_distance += w * padic_distance(a, b, p)
+    
+    return total_distance
 
 
 def adaptive_padic_score(candidate: int, reference: int, use_primes: List[int] = None) -> float:
-    # PURPOSE: Compute adaptive p-adic score for a factorization candidate
-    # INPUTS:
-    #   candidate (int) - candidate factor value
-    #   reference (int) - reference point (typically sqrt(N))
-    #   use_primes (List[int], optional) - primes to use (default: first 10 primes)
-    # PROCESS:
-    #   1. If use_primes is None: use_primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
-    #   2. Compute distances = [padic_distance(candidate, reference, p) for p in use_primes]
-    #   3. Create weights = [1.0 / (i + 1) for i in range(len(use_primes))]
-    #   4. Normalize weights: weight_sum = sum(weights), weights = [w/weight_sum for w in weights]
-    #   5. Compute score = sum(w * d for w, d in zip(weights, distances))
-    #   6. Add divisibility bonus:
-    #      - gcd_val = gcd(candidate, reference)
-    #      - If gcd_val > 1: score += -0.1 * log10(gcd_val)
-    #   7. Return score
-    # OUTPUTS: float - p-adic score (lower indicates better structural similarity)
-    # DEPENDENCIES: padic_distance, math.gcd, math.log10
-    pass
+    """IMPLEMENTED: Compute adaptive p-adic score for a factorization candidate."""
+    if use_primes is None:
+        # Default: use first 10 primes
+        use_primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
+    
+    # Compute p-adic distances for each prime
+    distances = []
+    for p in use_primes:
+        d = padic_distance(candidate, reference, p)
+        distances.append(d)
+    
+    # Weight smaller primes more heavily (they're more relevant for factorization)
+    weights = [1.0 / (i + 1) for i in range(len(use_primes))]
+    weight_sum = sum(weights)
+    weights = [w / weight_sum for w in weights]
+    
+    # Compute weighted score
+    score = sum(w * d for w, d in zip(weights, distances))
+    
+    # Add a "divisibility bonus" - lower score if candidate shares factors with reference
+    # This captures structural similarity relevant to factorization
+    gcd_val = math.gcd(candidate, reference)
+    if gcd_val > 1:
+        # Small bonus for sharing factors
+        divisibility_bonus = -0.1 * math.log10(gcd_val)
+        score += divisibility_bonus
+    
+    return score
 
 
 def padic_ultrametric_gva_score(candidate: int, reference: int, N: int = None) -> float:
-    # PURPOSE: Main p-adic GVA scoring function (NO METRIC LEAKAGE)
-    # INPUTS:
-    #   candidate (int) - candidate factor value
-    #   reference (int) - reference point (typically sqrt(N))
-    #   N (int, optional) - semiprime (ONLY for p-adic structure analysis, NOT divisibility testing)
-    # PROCESS:
-    #   1. Get base_score = adaptive_padic_score(candidate, reference)
-    #   2. If N is not None:
-    #      - N_factors = prime_factorization_small(N, max_prime=100)
-    #      - candidate_factors = prime_factorization_small(candidate, max_prime=100)
-    #      - shared_primes = set(N_factors.keys()) & set(candidate_factors.keys())
-    #      - If shared_primes: base_score += -0.05 * len(shared_primes)
-    #   3. Return base_score
-    # OUTPUTS: float - p-adic GVA score (lower is better)
-    # DEPENDENCIES: adaptive_padic_score, prime_factorization_small
-    # NOTE: Does NOT compute gcd(candidate, N) to prevent metric leakage
-    pass
+    """IMPLEMENTED: Main p-adic GVA scoring function (NO METRIC LEAKAGE)."""
+    # Base score from adaptive p-adic metric
+    base_score = adaptive_padic_score(candidate, reference)
+    
+    # If N is provided, analyze p-adic structure (but DO NOT test divisibility)
+    if N is not None:
+        # Analyze p-adic structure: compare small prime factorizations
+        # This is legitimate because we're looking at structural similarity,
+        # not testing if candidate divides N
+        N_factors = prime_factorization_small(N, max_prime=100)
+        candidate_factors = prime_factorization_small(candidate, max_prime=100)
+        
+        # Similarity in small prime factorization
+        shared_primes = set(N_factors.keys()) & set(candidate_factors.keys())
+        if shared_primes:
+            # Mild bonus for sharing small prime factors
+            similarity_bonus = -0.05 * len(shared_primes)
+            base_score += similarity_bonus
+    
+    return base_score
 
 
 if __name__ == "__main__":
-    print("p-adic metric module - all functions stubbed")
-    print("Implement incrementally using 'continue' command")
+    # Test p-adic metrics
+    print("Testing p-adic valuation and norms:")
+    print(f"{'n':<10} {'v_2(n)':<10} {'v_3(n)':<10} {'||n||_2':<12} {'||n||_3':<12}")
+    print("-" * 60)
+    
+    test_values = [1, 2, 3, 4, 6, 8, 9, 12, 16, 18, 24, 27]
+    for n in test_values:
+        v2 = padic_valuation(n, 2)
+        v3 = padic_valuation(n, 3)
+        norm2 = padic_norm(n, 2)
+        norm3 = padic_norm(n, 3)
+        print(f"{n:<10} {v2:<10} {v3:<10} {norm2:<12.4f} {norm3:<12.4f}")
+    
+    # Test ultrametric property
+    print("\n\nTesting ultrametric property: d(a,c) <= max(d(a,b), d(b,c))")
+    a, b, c = 8, 12, 20
+    p = 2
+    dab = padic_distance(a, b, p)
+    dbc = padic_distance(b, c, p)
+    dac = padic_distance(a, c, p)
+    print(f"a={a}, b={b}, c={c}, p={p}")
+    print(f"d({a},{b}) = {dab:.4f}")
+    print(f"d({b},{c}) = {dbc:.4f}")
+    print(f"d({a},{c}) = {dac:.4f}")
+    print(f"max(d(a,b), d(b,c)) = {max(dab, dbc):.4f}")
+    print(f"Ultrametric satisfied: {dac <= max(dab, dbc) + 1e-10}")
+    
+    # Test factorization scoring
+    print("\n\nTesting p-adic GVA scoring for 143 = 11 × 13:")
+    N = 143
+    sqrt_N = 12
+    candidates = [7, 11, 12, 13, 17, 19]
+    
+    print(f"{'Candidate':<12} {'p-adic Score':<15} {'Is Factor?':<12}")
+    print("-" * 45)
+    for cand in candidates:
+        score = padic_ultrametric_gva_score(cand, sqrt_N, N)
+        is_factor = "YES" if N % cand == 0 else "NO"
+        print(f"{cand:<12} {score:<15.4f} {is_factor:<12}")
