@@ -1,0 +1,189 @@
+{
+  "metadata": {
+    "timestamp": "2025-12-26T06:05:24.921067",
+    "n_zeros": 1000,
+    "method": "mpmath",
+    "precision": 50
+  },
+  "zeros_summary": {
+    "n_zeros": 1000,
+    "min_zero": 14.134725141734695,
+    "max_zero": 1419.4224809459956,
+    "mean_zero": 789.6693000604083
+  },
+  "z_transform": {
+    "n_values": 998,
+    "n_nans": 0.0,
+    "z_mean": -0.09998323915379491,
+    "z_std": 0.376017380205662,
+    "z_min": -2.840525425421187,
+    "z_max": 0.9066122744501369,
+    "z_median": 0.003264259844636233,
+    "z_skewness": -2.1346073700927706,
+    "z_kurtosis": 8.666127237148894,
+    "phase_mean": 2.689661186479685,
+    "phase_std": 2.100009575590544,
+    "phase_min": 0.0024443301274413554,
+    "phase_max": 6.281007956823867
+  },
+  "phase_clustering": {
+    "n_bins": 36,
+    "chi_square": 362.6412825651303,
+    "p_value": 0.0,
+    "circular_variance": 0.6312755112702979,
+    "mean_resultant_length": 0.3687244887297021,
+    "entropy": 3.410075044140781,
+    "max_entropy": 3.58351893845611,
+    "normalized_entropy": 0.9515995597360918,
+    "histogram": [
+      53,
+      39,
+      50,
+      65,
+      62,
+      66,
+      51,
+      48,
+      30,
+      27,
+      17,
+      20,
+      10,
+      11,
+      13,
+      5,
+      14,
+      12,
+      11,
+      11,
+      9,
+      16,
+      12,
+      19,
+      15,
+      23,
+      23,
+      17,
+      27,
+      32,
+      27,
+      28,
+      32,
+      34,
+      33,
+      36
+    ],
+    "bin_edges": [
+      0.0,
+      0.17453292519943295,
+      0.3490658503988659,
+      0.5235987755982988,
+      0.6981317007977318,
+      0.8726646259971648,
+      1.0471975511965976,
+      1.2217304763960306,
+      1.3962634015954636,
+      1.5707963267948966,
+      1.7453292519943295,
+      1.9198621771937625,
+      2.0943951023931953,
+      2.2689280275926285,
+      2.443460952792061,
+      2.6179938779914944,
+      2.792526803190927,
+      2.96705972839036,
+      3.141592653589793,
+      3.316125578789226,
+      3.490658503988659,
+      3.665191429188092,
+      3.839724354387525,
+      4.014257279586958,
+      4.1887902047863905,
+      4.363323129985823,
+      4.537856055185257,
+      4.71238898038469,
+      4.886921905584122,
+      5.061454830783555,
+      5.235987755982989,
+      5.410520681182422,
+      5.585053606381854,
+      5.759586531581287,
+      5.93411945678072,
+      6.1086523819801535,
+      6.283185307179586
+    ]
+  },
+  "gue_spacing": {
+    "n_gaps": 999,
+    "mean_gap": 0.9999798908126651,
+    "var_gap": 0.14435576918675283,
+    "ks_stat_wigner": 0.04403339757845008,
+    "p_value_wigner": 0.04154973604316437,
+    "ks_stat_poisson": 0.3214214894392469,
+    "p_value_poisson": 4.521669803077124e-90,
+    "mean_deviation_gue": 2.0109187334860223e-05,
+    "var_deviation_gue": 0.14164423081324715,
+    "mean_deviation_poisson": 2.0109187334860223e-05,
+    "var_deviation_poisson": 0.8556442308132471
+  },
+  "level_repulsion": {
+    "n_gaps": 999,
+    "n_small_gaps": 0.0,
+    "frac_small_gaps": 0.0,
+    "expected_frac_poisson": 0.09516258196404048,
+    "expected_frac_gue": 0.001072594064417394,
+    "repulsion_score": 0.0
+  },
+  "anomalies": {
+    "mean_delta": 1.4066944502545156,
+    "std_delta": 0.6565900001309596,
+    "anomaly_threshold": -0.5630755501383631,
+    "n_anomalies": 0.0,
+    "frac_anomalies": 0.0,
+    "smallest_gap": 0.161500788964986,
+    "smallest_gap_normalized": 0.1148087197868488
+  },
+  "b_term_spikes": {
+    "mean_b_term": -0.002255062010741397,
+    "std_b_term": 0.6945053999830273,
+    "n_spikes_high": 0.0,
+    "n_spikes_low": 0.0,
+    "n_spikes_total": 0.0,
+    "frac_spikes": 0.0,
+    "max_b_term": 2.03188302731468,
+    "min_b_term": -2.186078298016195
+  },
+  "autocorrelation": {
+    "acf_lag1": 0.005775903620983616,
+    "acf_lag5": 0.26111174052631153,
+    "acf_lag10": 0.20353559672500554
+  },
+  "conclusion": {
+    "summary": "Mixed results. Some tests support RH while others show deviations. Larger sample size or higher precision may be needed.",
+    "rh_status": "INCONCLUSIVE",
+    "confidence": "Low",
+    "criteria": [
+      {
+        "name": "Phase uniformity",
+        "passed": false,
+        "detail": "p=0.0000e+00 < 0.05 (ANOMALOUS)"
+      },
+      {
+        "name": "GUE spacing",
+        "passed": false,
+        "detail": "p=4.1550e-02 < 0.05 (deviation)"
+      },
+      {
+        "name": "Level repulsion",
+        "passed": true,
+        "detail": "score=0.0000 < 1.5"
+      },
+      {
+        "name": "Low anomalies",
+        "passed": true,
+        "detail": "0.0000% < 1%"
+      }
+    ],
+    "pass_rate": "2/4"
+  }
+}
