@@ -211,28 +211,83 @@ def compute_enrichment(candidates: list[int], scores: list[float],
 
 def validate_qmc_uniformity(num_candidates: int = 100000, 
                             seed: int = 42) -> dict:
-    # PURPOSE: Validate that 106-bit QMC maintains uniform distribution
-    # INPUTS:
-    #   num_candidates (int) - Number of samples to test
-    #   seed (int) - Random seed
-    # PROCESS:
-    #   1. Generate candidates using generate_candidates_qmc [IMPLEMENTED ✓] for a test N (e.g., 2^106)
-    #   2. Normalize candidates to [0, 1] range based on their offset from sqrt(N)
-    #   3. Perform Kolmogorov-Smirnov test against uniform distribution
-    #   4. Bin candidates into 100 bins, compute chi-square goodness-of-fit
-    #   5. Check for quantization artifacts (duplicate values, clustering)
-    #      NOTE: generate_candidates_qmc returns unique values via set(), so track original count
-    #   6. Compute discrepancy metric (max deviation from uniform)
-    # OUTPUTS: dict with keys:
-    #   - 'ks_statistic': float
-    #   - 'ks_pvalue': float
-    #   - 'chi_square': float
-    #   - 'chi_pvalue': float
-    #   - 'num_duplicates': int
-    #   - 'max_discrepancy': float
-    # DEPENDENCIES: scipy.stats (ks_1samp, chisquare), generate_candidates_qmc [IMPLEMENTED ✓]
-    # NOTE: High p-values (>0.05) and low discrepancy (<0.01) support uniformity
-    pass
+    """IMPLEMENTED: Validate that 106-bit QMC maintains uniform distribution.
+    
+    Tests the uniformity of QMC-generated candidates to ensure the 106-bit
+    construction doesn't introduce quantization bias.
+    
+    Args:
+        num_candidates: Number of samples to test
+        seed: Random seed
+        
+    Returns:
+        Dictionary with uniformity test statistics
+    """
+    from scipy import stats
+    import numpy as np
+    
+    # Use a large test semiprime (2^106 for simplicity)
+    test_N = 2 ** 106
+    
+    # Generate candidates - track before deduplication
+    from scipy.stats import qmc
+    sampler = qmc.Sobol(d=2, seed=seed)
+    samples = sampler.random(n=num_candidates)
+    
+    sqrt_N = int(math.isqrt(test_N))
+    
+    raw_candidates = []
+    for i, (hi_frac, lo_frac) in enumerate(samples):
+        hi = int(hi_frac * (2 ** 53))
+        lo = int(lo_frac * (2 ** 53))
+        combined = (hi << 53) | lo
+        max_106bit = 2 ** 106
+        offset = int((combined * 2 * sqrt_N) / max_106bit) - sqrt_N
+        
+        if i % 2 == 0:
+            candidate = sqrt_N + offset
+        else:
+            candidate = sqrt_N - offset
+        
+        if candidate >= 2 and candidate < test_N:
+            raw_candidates.append(candidate)
+    
+    # Check for duplicates
+    unique_candidates = list(set(raw_candidates))
+    num_duplicates = len(raw_candidates) - len(unique_candidates)
+    
+    # Normalize to [0, 1] based on offset from sqrt_N
+    normalized = [(c - 2) / (test_N - 2) for c in unique_candidates]
+    
+    # Kolmogorov-Smirnov test against uniform distribution
+    ks_stat, ks_pval = stats.kstest(normalized, 'uniform')
+    
+    # Chi-square goodness-of-fit test
+    num_bins = 100
+    observed, bin_edges = np.histogram(normalized, bins=num_bins, range=(0, 1))
+    expected_per_bin = len(normalized) / num_bins
+    expected = np.full(num_bins, expected_per_bin)
+    chi_stat, chi_pval = stats.chisquare(observed, expected)
+    
+    # Compute discrepancy (max deviation from uniform CDF)
+    sorted_norm = sorted(normalized)
+    discrepancies = []
+    for i, val in enumerate(sorted_norm):
+        empirical_cdf = (i + 1) / len(sorted_norm)
+        theoretical_cdf = val
+        discrepancies.append(abs(empirical_cdf - theoretical_cdf))
+    max_discrepancy = max(discrepancies) if discrepancies else 0
+    
+    return {
+        'ks_statistic': ks_stat,
+        'ks_pvalue': ks_pval,
+        'chi_square': chi_stat,
+        'chi_pvalue': chi_pval,
+        'num_duplicates': num_duplicates,
+        'max_discrepancy': max_discrepancy,
+        'num_raw_candidates': len(raw_candidates),
+        'num_unique_candidates': len(unique_candidates)
+    }
 
 
 def test_n127_semiprime(num_candidates: int = 1000000) -> dict:
@@ -248,7 +303,8 @@ def test_n127_semiprime(num_candidates: int = 1000000) -> dict:
     #   3. Score all candidates using z5d_score() [IMPLEMENTED ✓]
     #   4. Compute enrichment metrics using compute_enrichment() [IMPLEMENTED ✓]
     #      NOTE: enrichment now includes detailed metrics for validation
-    #   5. Validate QMC uniformity using validate_qmc_uniformity()
+    #   5. Validate QMC uniformity using validate_qmc_uniformity() [IMPLEMENTED ✓]
+    #      NOTE: uniformity validation includes KS test, chi-square, and discrepancy metrics
     #   6. Compile results with statistical significance tests
     # OUTPUTS: dict with keys:
     #   - 'N': int (the semiprime)
@@ -256,9 +312,8 @@ def test_n127_semiprime(num_candidates: int = 1000000) -> dict:
     #   - 'q': int (larger factor)
     #   - 'num_candidates': int
     #   - 'enrichment_results': dict (from compute_enrichment [IMPLEMENTED ✓])
-    #   - 'uniformity_results': dict (from validate_qmc_uniformity)
+    #   - 'uniformity_results': dict (from validate_qmc_uniformity [IMPLEMENTED ✓])
     #   - 'hypothesis_supported': bool (True if asymmetry > 5.0)
-    # DEPENDENCIES: generate_candidates_qmc [IMPLEMENTED ✓], z5d_score [IMPLEMENTED ✓], 
-    #               compute_enrichment [IMPLEMENTED ✓], validate_qmc_uniformity
-    # NOTE: This is the main validation experiment
+    # DEPENDENCIES: All functions implemented ✓
+    # NOTE: This is the main validation experiment - ready to implement
     pass
