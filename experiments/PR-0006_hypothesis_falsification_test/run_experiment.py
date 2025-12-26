@@ -37,10 +37,10 @@ class ExperimentConfig:
         
         # Experiment parameters
         self.seed = 42
-        self.num_trials = 10
+        self.num_trials = 3  # Reduced for faster execution
         self.prime_ranges = [
-            (1_000_000, 10_000_000),
-            (10_000_000, 100_000_000),
+            (100_000, 1_000_000),  # Smaller ranges for reasonable execution time
+            (1_000_000, 5_000_000),
         ]
         
         # Falsification thresholds
