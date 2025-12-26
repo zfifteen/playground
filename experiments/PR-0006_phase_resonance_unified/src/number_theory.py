@@ -179,42 +179,137 @@ def detect_peaks(resonance_values: np.ndarray, threshold: float = None) -> List[
 
 def evaluate_factor_detection(semiprime: int, true_factors: Tuple[int, int], 
                               detected_peaks: List[int], tolerance: int = 1) -> Dict[str, float]:
-    # PURPOSE: Evaluate accuracy of resonance-based factor detection
-    # INPUTS:
-    #   - semiprime (int): The number that was factored
-    #   - true_factors (tuple): (p1, p2) true prime factors
-    #   - detected_peaks (list): Candidate factors from detect_peaks() [IMPLEMENTED ✓]
-    #   - tolerance (int): Allow detection within ±tolerance of true factor
-    # PROCESS:
-    #   1. Check if p1 is in detected_peaks (within tolerance)
-    #   2. Check if p2 is in detected_peaks (within tolerance)
-    #   3. Count false positives (detected peaks that aren't factors)
-    #   4. Calculate precision = true_positives / (true_positives + false_positives)
-    #   5. Calculate recall = true_positives / 2 (two factors to find)
-    #   6. Return metrics dictionary
-    # OUTPUTS: Dict with keys 'precision', 'recall', 'f1_score', 'true_positives', 'false_positives'
-    # DEPENDENCIES: Basic Python arithmetic
-    # NOTES: Perfect detection = precision 1.0, recall 1.0
-    pass
+    """
+    IMPLEMENTED: Evaluate accuracy of resonance-based factor detection.
+    
+    Args:
+        semiprime: The number that was factored
+        true_factors: (p1, p2) true prime factors
+        detected_peaks: Candidate factors from detect_peaks()
+        tolerance: Allow detection within ±tolerance of true factor
+    
+    Returns:
+        Dict with keys 'precision', 'recall', 'f1_score', 'true_positives', 'false_positives'
+        Perfect detection = precision 1.0, recall 1.0
+    """
+    p1, p2 = true_factors
+    
+    # Check if p1 is in detected_peaks (within tolerance)
+    p1_detected = any(abs(peak - p1) <= tolerance for peak in detected_peaks)
+    
+    # Check if p2 is in detected_peaks (within tolerance)
+    # Note: p2 might be > sqrt(n), so not in scan range
+    max_scanned = int(np.sqrt(semiprime)) + 1
+    p2_in_range = p2 <= max_scanned
+    p2_detected = p2_in_range and any(abs(peak - p2) <= tolerance for peak in detected_peaks)
+    
+    # Count true positives
+    true_positives = int(p1_detected) + int(p2_detected)
+    
+    # Count false positives (detected peaks that aren't factors)
+    false_positives = 0
+    for peak in detected_peaks:
+        is_factor = (abs(peak - p1) <= tolerance) or (abs(peak - p2) <= tolerance)
+        if not is_factor:
+            false_positives += 1
+    
+    # Calculate precision = true_positives / (true_positives + false_positives)
+    if true_positives + false_positives > 0:
+        precision = true_positives / (true_positives + false_positives)
+    else:
+        precision = 0.0  # No detections at all
+    
+    # Calculate recall = true_positives / total_factors_in_range
+    # If p2 > sqrt(n), we can only find p1, so denominator is 1
+    total_factors_in_range = 1 if not p2_in_range else 2
+    recall = true_positives / total_factors_in_range if total_factors_in_range > 0 else 0.0
+    
+    # Calculate F1 score
+    if precision + recall > 0:
+        f1_score = 2 * (precision * recall) / (precision + recall)
+    else:
+        f1_score = 0.0
+    
+    # Return metrics dictionary
+    return {
+        'precision': precision,
+        'recall': recall,
+        'f1_score': f1_score,
+        'true_positives': true_positives,
+        'false_positives': false_positives,
+        'total_detections': len(detected_peaks),
+        'factors_in_range': total_factors_in_range,
+        'p1_detected': p1_detected,
+        'p2_detected': p2_detected if p2_in_range else None
+    }
 
 
 def compute_snr_at_factors(n: int, true_factors: Tuple[int, int], 
                           resonance_values: np.ndarray) -> float:
-    # PURPOSE: Calculate signal-to-noise ratio of resonance at true factors
-    # INPUTS:
-    #   - n (int): The semiprime
-    #   - true_factors (tuple): (p1, p2) true prime factors
-    #   - resonance_values (np.ndarray): Resonance scan from scan_divisors()
-    # PROCESS:
-    #   1. Extract resonance values at true factor positions (p1-2, p2-2 as indices)
-    #   2. Calculate signal = mean of resonance at true factors
-    #   3. Calculate noise = mean of all other resonance values
-    #   4. Compute SNR = signal / noise (or in dB: 20*log10(signal/noise))
-    #   5. Return SNR value
-    # OUTPUTS: float - signal-to-noise ratio
-    # DEPENDENCIES: numpy mean, log10
-    # NOTES: Higher SNR indicates clearer factor detection
-    pass
+    """
+    IMPLEMENTED: Calculate signal-to-noise ratio of resonance at true factors.
+    
+    Args:
+        n: The semiprime
+        true_factors: (p1, p2) true prime factors
+        resonance_values: Resonance scan from scan_divisors()
+    
+    Returns:
+        float - signal-to-noise ratio. Higher SNR indicates clearer factor detection.
+    """
+    p1, p2 = true_factors
+    
+    # Determine max divisor scanned
+    max_scanned = int(np.sqrt(n)) + 1
+    divisors = np.arange(2, max_scanned + 1)
+    
+    # Extract resonance values at true factor positions
+    signal_values = []
+    
+    # Check p1
+    if p1 in divisors:
+        idx_p1 = p1 - 2  # Convert divisor to array index
+        if 0 <= idx_p1 < len(resonance_values):
+            signal_values.append(resonance_values[idx_p1])
+    
+    # Check p2
+    if p2 in divisors:
+        idx_p2 = p2 - 2
+        if 0 <= idx_p2 < len(resonance_values):
+            signal_values.append(resonance_values[idx_p2])
+    
+    if len(signal_values) == 0:
+        # No factors in range, SNR undefined
+        return 0.0
+    
+    # Calculate signal = mean of resonance at true factors
+    signal = np.mean(signal_values)
+    
+    # Calculate noise = mean of all other resonance values
+    # (excluding the factor positions)
+    noise_mask = np.ones(len(resonance_values), dtype=bool)
+    
+    if p1 in divisors:
+        idx_p1 = p1 - 2
+        if 0 <= idx_p1 < len(noise_mask):
+            noise_mask[idx_p1] = False
+    
+    if p2 in divisors:
+        idx_p2 = p2 - 2
+        if 0 <= idx_p2 < len(noise_mask):
+            noise_mask[idx_p2] = False
+    
+    noise_values = resonance_values[noise_mask]
+    noise = np.mean(noise_values) if len(noise_values) > 0 else 0.0
+    
+    # Compute SNR = signal / noise (or in dB: 20*log10(signal/noise))
+    # Use linear ratio for simplicity
+    if noise != 0:
+        snr = signal / noise
+    else:
+        snr = np.inf if signal > 0 else 0.0
+    
+    return snr
 
 
 def run_batch_analysis(semiprimes: List[Tuple[int, int, int]], 
