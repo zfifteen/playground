@@ -13,7 +13,7 @@ Key features:
 
 import numpy as np
 from typing import List, Tuple, Optional, Callable
-from ..z_framework import curvature_metric, golden_ratio_phase, PHI
+from .z_framework import curvature_metric, golden_ratio_phase, PHI
 
 
 class SobolSequenceGenerator:

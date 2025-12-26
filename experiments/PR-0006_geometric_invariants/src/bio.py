@@ -13,7 +13,7 @@ Key features:
 
 import numpy as np
 from typing import List, Dict, Tuple, Optional
-from ..z_framework import golden_ratio_phase, curvature_metric, PHI
+from .z_framework import golden_ratio_phase, curvature_metric, PHI
 
 
 # DNA base encoding for numerical conversion
