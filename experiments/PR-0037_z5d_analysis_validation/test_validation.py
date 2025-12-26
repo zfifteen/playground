@@ -427,76 +427,226 @@ def test_convergence_logic() -> Tuple[bool, str]:
         return False, f"Exception during convergence test: {str(e)}"
 
 def test_edge_case_empty_pr() -> Tuple[bool, str]:
-    # PURPOSE: Test behavior with minimal/empty PR data
-    # INPUTS: Empty or minimal dict
-    # PROCESS:
-    #   1. Create pr_data = {} (empty)
-    #   2. Call analyze_pr(pr_data)
-    #   3. Observe behavior:
-    #      - Should not crash (graceful degradation)
-    #      - Summary should still generate (with defaults)
-    #      - Sub-issues should be static list (not data-dependent)
-    #      - Insights should be static (3 base + potentially 1 kappa)
-    #   4. Verify method field == "closed_form_context+deep_refinement"
-    # OUTPUTS: (bool, str) - (pass/fail, edge case handling)
-    # DEPENDENCIES: analyze_pr()
-    # NOTE: Current implementation doesn't use pr_data extensively, so should be robust
-    pass
+    """
+    IMPLEMENTED: Test behavior with minimal/empty PR data.
+    """
+    try:
+        # Step 1: Create empty PR data
+        pr_data_empty = {}
+        
+        # Step 2: Call analyze_pr - should not crash
+        result = analyze_pr(pr_data_empty)
+        
+        # Step 3: Verify result is still valid AnalysisResult
+        if not isinstance(result, AnalysisResult):
+            return False, f"Empty PR should return AnalysisResult, got {type(result).__name__}"
+        
+        # Step 4: Summary should still generate (implementation doesn't use pr_data much)
+        if not result.summary or not isinstance(result.summary, str):
+            return False, "Empty PR should still generate summary string"
+        
+        # Step 5: Sub-issues should be static list (not data-dependent)
+        if len(result.sub_issues) != 4:
+            return False, f"Empty PR should still have 4 static sub-issues, got {len(result.sub_issues)}"
+        
+        # Step 6: Insights should be static (3 base + potentially 1 kappa)
+        if len(result.insights) < 3:
+            return False, f"Empty PR should still have >= 3 insights, got {len(result.insights)}"
+        
+        # Step 7: Verify method field
+        if result.method != "closed_form_context+deep_refinement":
+            return False, f"Method should be 'closed_form_context+deep_refinement', got '{result.method}'"
+        
+        # Step 8: Recommendations should still be generated
+        if len(result.recommendations) != 5:
+            return False, f"Empty PR should still have 5 recommendations, got {len(result.recommendations)}"
+        
+        return True, "Empty PR handled gracefully: all components generated with defaults"
+        
+    except Exception as e:
+        return False, f"Empty PR caused exception (should handle gracefully): {str(e)}"
 
 def test_constant_correctness() -> Tuple[bool, str]:
-    # PURPOSE: Verify KNOWN_COMPONENTS constants match problem statement
-    # INPUTS: None (tests module-level constants)
-    # PROCESS:
-    #   1. Check KNOWN_COMPONENTS["semiprime_ranges"] == 5 ranges
-    #   2. Verify ranges: ["64-128", "128-192", "192-256", "256-384", "384-426"]
-    #   3. Check KNOWN_COMPONENTS["falsification_criteria"] == 4 criteria
-    #   4. Verify criteria include Q-enrichment, P-enrichment, Asymmetry, Pattern fails
-    #   5. Check KNOWN_COMPONENTS["total_semiprimes"] == 26
-    #   6. Verify KNOWN_COMPONENTS["sample_size_per_trial"] == 100000
-    #   7. Verify KNOWN_COMPONENTS["trials_per_semiprime"] == 10
-    #   8. Check calibration constants:
-    #      - _C_LOGICAL_GAP == -0.15
-    #      - _KAPPA_INSIGHT == 0.08
-    #      - _E_RESEARCH == 3.5
-    # OUTPUTS: (bool, str) - (pass/fail, constant validation)
-    # DEPENDENCIES: KNOWN_COMPONENTS, calibration constants from pr_analyzer
-    pass
+    """
+    IMPLEMENTED: Verify KNOWN_COMPONENTS constants match problem statement.
+    """
+    try:
+        checks = []
+        
+        # Step 1: Check semiprime_ranges
+        expected_ranges = ["64-128", "128-192", "192-256", "256-384", "384-426"]
+        if KNOWN_COMPONENTS["semiprime_ranges"] != expected_ranges:
+            return False, f"semiprime_ranges mismatch: expected {expected_ranges}, got {KNOWN_COMPONENTS['semiprime_ranges']}"
+        checks.append("semiprime_ranges: 5 ranges ✓")
+        
+        # Step 2: Check falsification_criteria count
+        if len(KNOWN_COMPONENTS["falsification_criteria"]) != 4:
+            return False, f"Expected 4 falsification criteria, got {len(KNOWN_COMPONENTS['falsification_criteria'])}"
+        checks.append("falsification_criteria: 4 criteria ✓")
+        
+        # Step 3: Verify specific criteria keywords
+        criteria = KNOWN_COMPONENTS["falsification_criteria"]
+        required_keywords = ["Q-enrichment", "P-enrichment", "Asymmetry", "Pattern fails"]
+        for keyword in required_keywords:
+            found = any(keyword in c for c in criteria)
+            if not found:
+                return False, f"Missing criterion keyword: {keyword}"
+        checks.append("criteria keywords: Q-enrichment, P-enrichment, Asymmetry, Pattern fails ✓")
+        
+        # Step 4: Check total_semiprimes
+        if KNOWN_COMPONENTS["total_semiprimes"] != 26:
+            return False, f"total_semiprimes should be 26, got {KNOWN_COMPONENTS['total_semiprimes']}"
+        checks.append("total_semiprimes: 26 ✓")
+        
+        # Step 5: Check sample_size_per_trial
+        if KNOWN_COMPONENTS["sample_size_per_trial"] != 100000:
+            return False, f"sample_size_per_trial should be 100000, got {KNOWN_COMPONENTS['sample_size_per_trial']}"
+        checks.append("sample_size_per_trial: 100000 ✓")
+        
+        # Step 6: Check trials_per_semiprime
+        if KNOWN_COMPONENTS["trials_per_semiprime"] != 10:
+            return False, f"trials_per_semiprime should be 10, got {KNOWN_COMPONENTS['trials_per_semiprime']}"
+        checks.append("trials_per_semiprime: 10 ✓")
+        
+        # Step 7: Check qmc_precision
+        if KNOWN_COMPONENTS["qmc_precision"] != "106-bit":
+            return False, f"qmc_precision should be '106-bit', got {KNOWN_COMPONENTS['qmc_precision']}"
+        checks.append("qmc_precision: '106-bit' ✓")
+        
+        # Step 8: Check calibration constants
+        if _C_LOGICAL_GAP != -0.15:
+            return False, f"_C_LOGICAL_GAP should be -0.15, got {_C_LOGICAL_GAP}"
+        checks.append("_C_LOGICAL_GAP: -0.15 ✓")
+        
+        if _KAPPA_INSIGHT != 0.08:
+            return False, f"_KAPPA_INSIGHT should be 0.08, got {_KAPPA_INSIGHT}"
+        checks.append("_KAPPA_INSIGHT: 0.08 ✓")
+        
+        # Note: _E_RESEARCH is defined but not used in current implementation
+        # Still verify it exists and has correct value
+        from pr_analyzer import _E_RESEARCH
+        if _E_RESEARCH != 3.5:
+            return False, f"_E_RESEARCH should be 3.5, got {_E_RESEARCH}"
+        checks.append("_E_RESEARCH: 3.5 ✓")
+        
+        return True, "; ".join(checks)
+        
+    except Exception as e:
+        return False, f"Exception during constant verification: {str(e)}"
 
 def test_alignment_calculation() -> Tuple[bool, str]:
-    # PURPOSE: Validate spec alignment calculation in closed_form_context
-    # INPUTS: Mock PR data
-    # PROCESS:
-    #   1. Generate mock data
-    #   2. Call analyze_pr()
-    #   3. Extract alignment score from summary
-    #   4. Expected: 0.85 + (-0.15) = 0.70
-    #   5. Parse summary for "Spec alignment: X.XX"
-    #   6. Verify parsed value == 0.70 (within floating point tolerance)
-    #   7. Test formula independence: modify _C_LOGICAL_GAP (if possible)
-    #      and verify alignment changes accordingly
-    # OUTPUTS: (bool, str) - (pass/fail, alignment accuracy)
-    # DEPENDENCIES: generate_mock_pr_data() [IMPLEMENTED ✓], analyze_pr(), closed_form_context()
-    pass
+    """
+    IMPLEMENTED: Validate spec alignment calculation in closed_form_context.
+    """
+    try:
+        # Step 1: Generate mock data
+        pr_data = generate_mock_pr_data()
+        
+        # Step 2: Call analyze_pr()
+        result = analyze_pr(pr_data)
+        
+        # Step 3: Expected alignment: 0.85 + (-0.15) = 0.70
+        expected_alignment = 0.85 + _C_LOGICAL_GAP
+        
+        # Step 4: Parse alignment from summary
+        import re
+        alignment_match = re.search(r'Spec alignment:\s*([\d.]+)', result.summary)
+        if not alignment_match:
+            return False, "Could not find 'Spec alignment' in summary"
+        
+        parsed_alignment = float(alignment_match.group(1))
+        
+        # Step 5: Verify within tolerance
+        tolerance = 0.001
+        if abs(parsed_alignment - expected_alignment) > tolerance:
+            return False, f"Alignment mismatch: expected {expected_alignment:.2f}, got {parsed_alignment:.2f}"
+        
+        # Step 6: Verify formula components
+        if abs(expected_alignment - 0.70) > tolerance:
+            return False, f"Expected alignment should be 0.70, calculated {expected_alignment:.2f}"
+        
+        return True, f"Alignment calculation correct: {parsed_alignment:.2f} = 0.85 + {_C_LOGICAL_GAP}"
+        
+    except Exception as e:
+        return False, f"Exception during alignment test: {str(e)}"
 
 def test_data_class_structure() -> Tuple[bool, str]:
-    # PURPOSE: Verify data classes have correct fields and types
-    # INPUTS: Mock result data
-    # PROCESS:
-    #   1. Create instances of SubIssue, Insight, Recommendation
-    #   2. Verify SubIssue fields: description, dependencies, impact (all str/List[str])
-    #   3. Verify Insight fields: category, evidence, implication (all str)
-    #   4. Verify Recommendation fields: action, priority, rationale (str, int, str)
-    #   5. Check AnalysisResult fields:
-    #      - summary: str
-    #      - sub_issues: List[SubIssue]
-    #      - insights: List[Insight]
-    #      - recommendations: List[Recommendation]
-    #      - converged: bool
-    #      - method: str (default "closed_form_context+deep_refinement")
-    #   6. Test dataclass equality and repr
-    # OUTPUTS: (bool, str) - (pass/fail, structure validation)
-    # DEPENDENCIES: Data classes from pr_analyzer
-    pass
+    """
+    IMPLEMENTED: Verify data classes have correct fields and types.
+    """
+    try:
+        checks = []
+        
+        # Step 1: Test SubIssue
+        sub = SubIssue(
+            description="test desc",
+            dependencies=["dep1", "dep2"],
+            impact="test impact"
+        )
+        if not hasattr(sub, 'description') or not hasattr(sub, 'dependencies') or not hasattr(sub, 'impact'):
+            return False, "SubIssue missing required attributes"
+        checks.append("SubIssue structure ✓")
+        
+        # Step 2: Test Insight
+        ins = Insight(
+            category="test category",
+            evidence="test evidence",
+            implication="test implication"
+        )
+        if not hasattr(ins, 'category') or not hasattr(ins, 'evidence') or not hasattr(ins, 'implication'):
+            return False, "Insight missing required attributes"
+        checks.append("Insight structure ✓")
+        
+        # Step 3: Test Recommendation
+        rec = Recommendation(
+            action="test action",
+            priority=1,
+            rationale="test rationale"
+        )
+        if not hasattr(rec, 'action') or not hasattr(rec, 'priority') or not hasattr(rec, 'rationale'):
+            return False, "Recommendation missing required attributes"
+        if not isinstance(rec.priority, int):
+            return False, "Recommendation priority should be int"
+        checks.append("Recommendation structure ✓")
+        
+        # Step 4: Test AnalysisResult
+        res = AnalysisResult(
+            summary="test summary",
+            sub_issues=[sub],
+            insights=[ins],
+            recommendations=[rec],
+            converged=True
+        )
+        required_attrs = ['summary', 'sub_issues', 'insights', 'recommendations', 'converged', 'method']
+        for attr in required_attrs:
+            if not hasattr(res, attr):
+                return False, f"AnalysisResult missing attribute: {attr}"
+        
+        # Verify default method
+        if res.method != "closed_form_context+deep_refinement":
+            return False, f"Default method should be 'closed_form_context+deep_refinement', got '{res.method}'"
+        checks.append("AnalysisResult structure ✓")
+        
+        # Step 5: Test dataclass equality
+        sub2 = SubIssue(
+            description="test desc",
+            dependencies=["dep1", "dep2"],
+            impact="test impact"
+        )
+        if sub != sub2:
+            return False, "Dataclass equality test failed"
+        checks.append("Dataclass equality ✓")
+        
+        # Step 6: Test repr
+        repr_str = repr(sub)
+        if "SubIssue" not in repr_str:
+            return False, "Dataclass repr should contain class name"
+        checks.append("Dataclass repr ✓")
+        
+        return True, "; ".join(checks)
+        
+    except Exception as e:
+        return False, f"Exception during data class test: {str(e)}"
 
 # ---------------------- Main Test Runner ----------------------
 
