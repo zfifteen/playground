@@ -106,26 +106,35 @@ def compute_resonance(n: int, k: int, theta: float = 0.0) -> float:
 
 
 def scan_divisors(n: int, theta: float = 0.0, max_k: int = None) -> np.ndarray:
-    # PURPOSE: Scan all candidate divisors of n and compute resonance for each
-    # INPUTS:
-    #   - n (int): The semiprime to analyze
-    #   - theta (float): Phase offset for resonance
-    #   - max_k (int): Maximum divisor to test (default: sqrt(n))
-    # PROCESS:
-    #   1. Set max_k to sqrt(n) if not provided
-    #   2. Create array of candidates from 2 to max_k
-    #   3. For each k, call compute_resonance(n, k, theta) [IMPLEMENTED ✓]
-    #   4. Store results in numpy array
-    # OUTPUTS: np.ndarray - resonance values for each candidate divisor
-    # DEPENDENCIES: compute_resonance() [IMPLEMENTED ✓], numpy
-    # NOTES: Array index i corresponds to divisor i+2 (skip 0 and 1)
-    pass
+    """
+    IMPLEMENTED: Scan all candidate divisors of n and compute resonance for each.
+    
+    Args:
+        n: The semiprime to analyze
+        theta: Phase offset for resonance
+        max_k: Maximum divisor to test (default: sqrt(n))
+    
+    Returns:
+        np.ndarray - resonance values for each candidate divisor
+        Array index i corresponds to divisor i+2 (skip 0 and 1)
+    """
+    # Set max_k to sqrt(n) if not provided
+    if max_k is None:
+        max_k = int(np.sqrt(n)) + 1
+    
+    # Create array of candidates from 2 to max_k
+    candidates = np.arange(2, max_k + 1)
+    
+    # For each k, call compute_resonance(n, k, theta)
+    resonance_values = np.array([compute_resonance(n, k, theta) for k in candidates])
+    
+    return resonance_values
 
 
 def detect_peaks(resonance_values: np.ndarray, threshold: float = None) -> List[int]:
     # PURPOSE: Identify peaks in resonance signal that may indicate factors
     # INPUTS:
-    #   - resonance_values (np.ndarray): Output from scan_divisors()
+    #   - resonance_values (np.ndarray): Output from scan_divisors() [IMPLEMENTED ✓]
     #   - threshold (float): Minimum resonance value to consider (default: mean + 2*std)
     # PROCESS:
     #   1. Calculate threshold if not provided (mean + 2*std)
