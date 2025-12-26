@@ -65,20 +65,63 @@ class ModuleValidator:
         pass
     
     def count_python_loc(self, file_content: str) -> int:
-        # PURPOSE: Count lines of code excluding blanks and comments
-        # INPUTS: file_content (str) - Python source code
-        # PROCESS:
-        #   1. Split content into lines
-        #   2. For each line:
-        #      - Strip whitespace
-        #      - Skip if empty
-        #      - Skip if starts with '#'
-        #      - Skip if in multiline string/docstring (track """ state)
-        #      - Otherwise count as LOC
-        #   3. Return total count
-        # OUTPUTS: int - lines of code count
-        # DEPENDENCIES: None
-        pass
+        """
+        IMPLEMENTED: Count lines of code excluding blanks and comments
+        
+        Args:
+            file_content: Python source code as string
+            
+        Returns:
+            Number of lines of code (excluding blanks, comments, docstrings)
+        """
+        lines = file_content.split('\n')
+        loc = 0
+        in_multiline = False
+        multiline_delim = None
+        
+        for line in lines:
+            stripped = line.strip()
+            
+            # Handle multiline strings/docstrings
+            if '"""' in stripped or "'''" in stripped:
+                # Check for triple quotes
+                if '"""' in stripped:
+                    delim = '"""'
+                else:
+                    delim = "'''"
+                
+                # Count occurrences
+                count = stripped.count(delim)
+                
+                if in_multiline:
+                    # Check if this closes the multiline
+                    if delim == multiline_delim and count >= 1:
+                        in_multiline = False
+                        multiline_delim = None
+                else:
+                    # Check if this opens a multiline (and doesn't close on same line)
+                    if count == 1:
+                        in_multiline = True
+                        multiline_delim = delim
+                    # If count == 2, it's a single-line docstring, don't count as LOC
+                continue
+            
+            # Skip lines inside multiline strings
+            if in_multiline:
+                continue
+            
+            # Skip empty lines
+            if not stripped:
+                continue
+            
+            # Skip comment-only lines
+            if stripped.startswith('#'):
+                continue
+            
+            # This is a line of code
+            loc += 1
+        
+        return loc
     
     def get_results(self) -> Dict[str, Any]:
         # PURPOSE: Return validation results
