@@ -71,7 +71,11 @@ def is_prime(n: int, k: int = 20) -> bool:
         d //= 2
     
     for _ in range(k):
-        a = random.randint(2, n - 2)
+        # Handle small n where n-2 < 2
+        if n <= 4:
+            a = 2
+        else:
+            a = random.randint(2, n - 2)
         x = pow(a, d, n)
         
         if x == 1 or x == n - 1:
@@ -94,6 +98,9 @@ def generate_prime(bits: int) -> int:
         p = random.randrange(2**(bits-1), 2**bits)
         if p % 2 == 0:
             p += 1
+        # Ensure p doesn't exceed bit range after increment
+        if p >= 2**bits:
+            continue
         if is_prime(p):
             return p
 
@@ -140,14 +147,14 @@ def pollard_rho_instrumented(n: int, max_iter: int = 10000000,
     y = x
     c = random.randint(1, n - 1)
     
-    f = lambda x: (x * x + c) % n
-    
     walker_separation = 0
     
     while iterations < max_iter:
-        # Advance walkers
-        x = f(x)
-        y = f(f(y))
+        # Polynomial function: f(x) = x^2 + c (mod n)
+        # Recompute each iteration to avoid closure issues
+        x = (x * x + c) % n
+        y_temp = (y * y + c) % n
+        y = (y_temp * y_temp + c) % n
         walker_separation = abs(x - y)
         
         # Record convergence every 100 iterations if requested
